@@ -9,21 +9,36 @@ README.md               このファイル
 tasks/TASK_CURRENT.md   工程管理（現在工程）
 docs/official/          正本（統合企画書・案件概要書・機能仕様書・データ設計書 v1.7）
 docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1）
+docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」13列、「履歴」6列）
+docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 ```
 
-## GASソース
+## GASソースとテスト
 ```
-src/                    GAS共通基盤（clasp の rootDir 予定。scriptId は未確定のため .clasp.json は未作成）
-docs/DB_SCHEMA.md       Google Sheets 正データの項目定義（シート名・列順は未確定）
+.clasp.json             scriptId と rootDir=src
+src/                    GASソース（clasp push の対象）
+  Code.js               doGet・共通初期化・エラー画面
+  Config.js / Schema.js / Store.js   正データ設定・定義・読み書き（履歴付き）
+  Is00Test.js           IS-00 実データ試験（runIs00SheetTest）
+  index.html ほか       2画面枠・タブ移動・共通CSS/JS・エラー枠・分析結果の貼り付け表示
+tests/                  ローカルテスト（node tests/store.test.js、node tests/is00test.test.js）
 ```
 
 ## 対象資産（IS-00 確認結果）
 | 資産 | 状態 | 内容 |
 |---|---|---|
 | 対象GAS | 確認済み | scriptId `1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS`（会社アカウント所有、「週間タスクボード」スプレッドシートに紐づく）。rootDir `src`。 |
-| Webアプリ | 確認済み | 版1デプロイ `AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g`（access=MYSELF、executeAs=USER_DEPLOYING） |
-| Google Sheets | 確認済み | 「週間タスクボード」 ID `1tk1ZaiM1JqPgw9ENAJ8xJN-zT8k4qKYmwroUvE4b1nE`。シート「タスク」「履歴」（docs/DB_SCHEMA.md）。 |
+| Webアプリ | 確認済み | 公開：版1 `AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g`（access=MYSELF、executeAs=USER_DEPLOYING）。開発用：HEAD `AKfycbxsmssqLMIBVOdw47eLBEYuRE4MAkYjdh2_UFJyig`（/dev）。版1には分析結果の貼り付け表示は含まれない。 |
+| Google Sheets | 確認済み | 「週間タスクボード」 ID `1tk1ZaiM1JqPgw9ENAJ8xJN-zT8k4qKYmwroUvE4b1nE`。シート「タスク」「履歴」（データ行0件）。既存「シート1」は未変更。 |
 | Google Drive | 確認済み | フォルダ「週間タスクボード」 ID `1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z`（会社アカウント所有）。正本4点・実装指示書もDrive上に存在。 |
-| Obsidian Vault | 確認済み（Drive上） | Drive「週間タスクボード/週間タスク」 ID `1vAHdhUFYsQ86bnC_OPaWeczZU-_NhHnV`（`.obsidian` 設定フォルダあり）。現在の中身は `ようこそ.md` のみ。`通常業務.md`・`AI案件.md` は未作成。PC側のローカルパスは未確認。 |
+| Obsidian Vault | 確認済み | Drive「週間タスクボード/週間タスク」 ID `1vAHdhUFYsQ86bnC_OPaWeczZU-_NhHnV`（`.obsidian` あり）。`通常業務.md` 作成済み（PoC1）。`AI案件.md` は未作成（IS-02でデスクトップ版Workが作成）。PC側のローカルパスは未確認。 |
 | ローカル作業フォルダ | 未確認 | リポジトリ・正本・Driveに記載なし。 |
-| クロスレビュー確定事項md | 特定済み・内容未読 | Drive「週間タスクボード/週間タスク・朝ブリーフ_v1.5_クロスレビュー確定事項.md」 ID `1FgPbEwDe7NeawKci7A71EyZUyDMSk5J_`（正本v1.7と同時刻 2026-09-11 13:25 JST に保存）。作業環境の権限では内容を読めない。 |
+| クロスレビュー確定事項md | 確認済み | Drive「週間タスクボード/週間タスク・朝ブリーフ_v1.5_クロスレビュー確定事項.md」 ID `1FgPbEwDe7NeawKci7A71EyZUyDMSk5J_`。本文に「反映先正本：v1.7（2026-09-11修正反映）」と明記。内容は正本v1.7と一致し、本リポジトリの実装（候補の仮保存なし・状態1項目）と矛盾なし。 |
+
+## 受け渡し方式（IS-00 で固定）
+| 経路 | 方式 | PoC |
+|---|---|---|
+| Work → Obsidian | Web版WorkがDrive上のVault直下へMarkdownを保存 | 合格 |
+| ChatGPT Project → Obsidian読取 | ProjectがDrive上のVault内ファイルを直接読む | 合格 |
+| ChatGPT Project → Sheets読取 | ProjectがDrive上の「週間タスクボード」を直接読む | 合格 |
+| Project分析結果 → 週間画面 | 貼り付け方式（docs/HANDOFF_FORMAT.md）。保存なし | 合格 |
