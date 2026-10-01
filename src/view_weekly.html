@@ -1,2 +1,20 @@
 <h2 class="view-title">週間タスク</h2>
 <p class="placeholder">週間タスク画面の内容はIS-01で実装します。</p>
+
+<!-- IS-00 PoC4：ChatGPT Project分析結果の貼り付け表示（保存しない） -->
+<section class="handoff" aria-labelledby="handoff-title">
+  <h3 id="handoff-title" class="handoff-title">ChatGPT Project 分析結果の読み込み</h3>
+  <textarea id="handoff-input" class="handoff-input" rows="6" placeholder="ChatGPT Projectが出力したJSONを貼り付けてください"></textarea>
+  <button type="button" id="handoff-load" class="handoff-load">読み込む</button>
+  <div id="handoff-result" class="handoff-result" hidden>
+    <p class="handoff-note">表示のみです。保存はしていません。</p>
+    <dl class="handoff-meta">
+      <dt>対象週</dt><dd id="handoff-week"></dd>
+      <dt>今週の見立て</dt><dd id="handoff-outlook"></dd>
+    </dl>
+    <h4>注意・コーション</h4>
+    <ul id="handoff-cautions"></ul>
+    <h4>タスク案（<span id="handoff-count"></span>件）</h4>
+    <ul id="handoff-tasks" class="handoff-tasks"></ul>
+  </div>
+</section>

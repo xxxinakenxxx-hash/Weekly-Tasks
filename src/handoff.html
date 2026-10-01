@@ -1,0 +1,74 @@
+<script>
+  // IS-00 PoC4：ChatGPT Project分析結果（docs/HANDOFF_FORMAT.md）を読み込み、週間画面へ表示する。保存はしない。
+  (function () {
+    var KINDS = ['通常タスク', 'AI案件'];
+    var DAYS = ['月', '火', '水', '木', '金'];
+    var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
+
+    function parseHandoff(text) {
+      var data;
+      try {
+        data = JSON.parse(String(text).trim());
+      } catch (e) {
+        throw new Error('JSONとして読めません：' + e.message);
+      }
+      var errors = [];
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('JSONの一番外側は { } にしてください。');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data['対象週'] || ''))) errors.push('「対象週」は yyyy-MM-dd で指定してください。');
+      if (typeof data['見立て'] !== 'string') errors.push('「見立て」は文字列で指定してください。');
+      if (!Array.isArray(data['コーション'])) errors.push('「コーション」は配列で指定してください。');
+      if (!Array.isArray(data['タスク案'])) errors.push('「タスク案」は配列で指定してください。');
+      (data['タスク案'] || []).forEach(function (t, i) {
+        var n = (i + 1) + '件目：';
+        if (!t || typeof t !== 'object') { errors.push(n + '形式が不正です。'); return; }
+        if (!t['タスク名']) errors.push(n + '「タスク名」は必須です。');
+        if (KINDS.indexOf(t['種別']) < 0) errors.push(n + '「種別」は 通常タスク／AI案件 のいずれかです。');
+        if (t['曜日'] && DAYS.indexOf(t['曜日']) < 0) errors.push(n + '「曜日」は 月〜金 または空欄です。');
+        if (t['優先度'] !== undefined && t['優先度'] !== '' && !(Number(t['優先度']) >= 1 && Number(t['優先度']) % 1 === 0)) errors.push(n + '「優先度」は1以上の整数です。');
+        if (t['重点'] !== undefined && typeof t['重点'] !== 'boolean') errors.push(n + '「重点」は true／false です。');
+        if (t['例外情報'] && !EXCEPTIONS.some(function (e) { return String(t['例外情報']).indexOf(e + '：') === 0; })) {
+          errors.push(n + '「例外情報」は「区分：内容」で、区分は ' + EXCEPTIONS.join('／') + ' です。');
+        }
+      });
+      if (errors.length) throw new Error(errors.join(' '));
+      return data;
+    }
+
+    function li(text) {
+      var el = document.createElement('li');
+      el.textContent = text;
+      return el;
+    }
+
+    function render(data) {
+      document.getElementById('handoff-week').textContent = data['対象週'];
+      document.getElementById('handoff-outlook').textContent = data['見立て'];
+      var cautions = document.getElementById('handoff-cautions');
+      cautions.innerHTML = '';
+      data['コーション'].forEach(function (c) { cautions.appendChild(li(String(c))); });
+      var tasks = document.getElementById('handoff-tasks');
+      tasks.innerHTML = '';
+      data['タスク案'].forEach(function (t) {
+        var parts = ['[' + t['種別'] + ']', t['タスク名'], '曜日：' + (t['曜日'] || '未配置')];
+        if (t['優先度']) parts.push('優先度：' + t['優先度']);
+        if (t['重点']) parts.push('重点');
+        if (t['例外情報']) parts.push(t['例外情報']);
+        tasks.appendChild(li(parts.join(' ／ ')));
+      });
+      document.getElementById('handoff-count').textContent = data['タスク案'].length;
+      document.getElementById('handoff-result').hidden = false;
+    }
+
+    window.Handoff = { parse: parseHandoff };
+
+    document.getElementById('handoff-load').addEventListener('click', function () {
+      try {
+        render(parseHandoff(document.getElementById('handoff-input').value));
+        App.clearError();
+      } catch (e) {
+        document.getElementById('handoff-result').hidden = true;
+        App.showError(e.message);
+      }
+    });
+  })();
+</script>
