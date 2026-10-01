@@ -4,26 +4,34 @@
 IS-00 基盤・正データ構築
 
 ## 状態
-停止（要確認事項の回答待ち）
+進行中
 
 ## 現在の作業
-IS-00 対象資産確認・GAS共通基盤（ローカル）作成
+IS-00 Sheets構築・実データ試験（完了）
 
 ## 完了済み
 - 開発資料の配置
 - Claude Code管理ファイルの作成
-- 対象資産の確認とREADMEへの記録（未確認分は要確認として記録）
-- GAS共通基盤のローカル実装（src/：doGet、共通初期化、2画面枠、タブ移動、共通CSS/JS、エラー枠、本人利用範囲）
+- 対象資産の確認とREADMEへの記録
+- GAS共通基盤の実装（src/：doGet、共通初期化、2画面枠、タブ移動、共通CSS/JS、エラー枠）
 - 共通基盤のローカル表示試験（PC/スマホ幅、18項目合格）
-- DB_SCHEMA.md 作成（項目一覧のみ。シート名・列順は未確定）
+- DB_SCHEMA 具体化（docs/DB_SCHEMA.md：シート「タスク」13列、「履歴」6列）
+- clasp 接続（.clasp.json：scriptId `1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS`、rootDir `src`）
+- 対象GASへ clasp push（src/ 12ファイル。GAS側を再読込し src/ と一致を確認）
+- Sheets構築：既存「週間タスクボード」に「タスク」「履歴」シートを作成（既存「シート1」は変更なし）
+- 実データ試験（runIs00SheetTest、会社アカウントで実行、2026-10-01 16:44）
+  - DB_SCHEMA と実シート見出しの一致：合格（Driveから実シートを読み、タスク13列・履歴6列を確認）
+  - 状態5値（未着手／進行中／完了／次週候補／持越し）の保存・再読込：合格
+  - 履歴（作成・状態変更4件・修正1件）の保存・再読込：合格
+  - 試験データの削除：タスク1行・履歴6行を削除し、試験前の状態（見出し行のみ）へ復元
+- 不具合修正：Sheetsが日付文字列を日付型へ自動変換する件（1回目の試験で検出、読込時に文字列へ戻すよう修正）
 
 ## 未確認事項
-- 対象GASの scriptId（新規作成か既存利用か）
-- 正データ用スプレッドシートのID・所有アカウント
-- Sheetsの実シート名・列構成、タスクID形式、対象週の表し方
-- 受け渡しPoC 4経路（Work→Obsidian、Project→Obsidian読取、Project→Sheets読取、Project結果→週間画面）の実施
+- Webアプリのデプロイ設定（manifest上は executeAs=USER_DEPLOYING / access=MYSELF。実デプロイへは未反映）
+- PC／実機スマホでの2画面表示・遷移（実GAS上は未確認）
+- 受け渡しPoC 4経路（Work→Obsidian、ChatGPT Project→Obsidian読取、ChatGPT Project→Sheets読取、Project分析結果→週間画面）
 - Obsidian Vault の実在場所、ローカル作業フォルダの場所
 - クロスレビュー確定事項md の特定
 
 ## 次に行う作業
-未確認事項の回答後、IS-00の続き（PoC・Sheets構築・GAS反映）を行う。IS-01へは進まない。
+IS-00の残作業（デプロイ更新とPC/スマホ確認、受け渡しPoC）。ユーザー指示後に着手する。IS-01へは進まない。
