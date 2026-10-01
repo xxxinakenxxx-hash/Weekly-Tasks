@@ -9,6 +9,7 @@ function makeSheet(name) {
     getLastColumn: () => Math.max(0, ...s.data.map(r => { for (let i = r.length; i > 0; i--) if (r[i - 1] !== '') return i; return 0; })),
     getMaxRows: () => s.maxRows,
     setFrozenRows: n => { s.frozen = n; },
+    deleteRow: r => { s.data.splice(r - 1, 1); },
     appendRow: row => { const r = s.api.getLastRow() + 1; ensure(r, row.length); s.data[r - 1] = row.slice(); },
     getRange: (r, c, nr = 1, nc = 1) => ({
       getValues: () => { const out = []; for (let i = 0; i < nr; i++) { const row = []; for (let j = 0; j < nc; j++) row.push(((s.data[r - 1 + i] || [])[c - 1 + j]) ?? ''); out.push(row); } return out; },
@@ -24,6 +25,8 @@ function load(opts = {}) {
   const sheets = {};
   (opts.existing || ['シート1']).forEach(n => { sheets[n] = makeSheet(n); });
   const ss = {
+    getName: () => '週間タスクボード',
+    getSheets: () => Object.values(sheets).map(x => x.api),
     getSheetByName: n => (sheets[n] ? sheets[n].api : null),
     insertSheet: n => { sheets[n] = makeSheet(n); return sheets[n].api; }
   };
@@ -44,7 +47,7 @@ function load(opts = {}) {
   };
   vm.createContext(ctx);
   const src = path.join(__dirname, '..', 'src');
-  ['Config.js', 'Schema.js', 'Store.js', 'Code.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
+  ['Config.js', 'Schema.js', 'Store.js', 'Code.js', 'Is00Test.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
   ctx.__sheets = sheets;
   return ctx;
 }
