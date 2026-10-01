@@ -32,7 +32,7 @@ tests/                  ローカルテスト（node tests/store.test.js、node 
 | Google Sheets | 確認済み | 「週間タスクボード」 ID `1tk1ZaiM1JqPgw9ENAJ8xJN-zT8k4qKYmwroUvE4b1nE`。シート「タスク」「履歴」（データ行0件）。既存「シート1」は未変更。 |
 | Google Drive | 確認済み | フォルダ「週間タスクボード」 ID `1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z`（会社アカウント所有）。正本4点・実装指示書もDrive上に存在。 |
 | Obsidian Vault | 確認済み | Drive「週間タスクボード/週間タスク」 ID `1vAHdhUFYsQ86bnC_OPaWeczZU-_NhHnV`（`.obsidian` あり）。`通常業務.md` 作成済み（PoC1）。`AI案件.md` は未作成（IS-02でデスクトップ版Workが作成）。PC側のローカルパスは未確認。 |
-| ローカル作業フォルダ | 未確認 | リポジトリ・正本・Driveに記載なし。 |
+| ローカル作業フォルダ | 確定（2026-10-01 ユーザー決定） | Windows PC `C:\Users\inamori240\Documents`。AI案件のローカルリポジトリ群をまとめている親フォルダで、デスクトップ版Workにアクセス許可するフォルダとして使用する（同一の場所）。Weekly-Tasks開発リポジトリの置き場所ではない。AI案件巡回では、配下の各AI案件リポジトリ内の `TASK_CURRENT.md` を参照する。 |
 | クロスレビュー確定事項md | 確認済み | Drive「週間タスクボード/週間タスク・朝ブリーフ_v1.5_クロスレビュー確定事項.md」 ID `1FgPbEwDe7NeawKci7A71EyZUyDMSk5J_`。本文に「反映先正本：v1.7（2026-09-11修正反映）」と明記。内容は正本v1.7と一致し、本リポジトリの実装（候補の仮保存なし・状態1項目）と矛盾なし。 |
 
 ## 受け渡し方式（IS-00 で固定）

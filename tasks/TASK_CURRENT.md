@@ -4,7 +4,7 @@
 IS-00 基盤・正データ構築
 
 ## 状態
-完了条件3点を充足・ユーザー確認待ち（IS-01 未着手）
+完了（完了条件3点を充足、実施内容の記録も完了）・ユーザー確認待ち（IS-01 未着手）
 
 ## 現在の作業
 IS-00 完了報告
@@ -18,7 +18,8 @@ IS-00 完了報告
 
 ## 完了済み
 - 資料配置、管理ファイル作成（CLAUDE.md・README.md・TASK_CURRENT.md・.gitignore）
-- 対象資産の確認とREADMEへの記録（ローカル作業フォルダのみ未確認）
+- 対象資産の確認とREADMEへの記録（GAS/Sheets/Drive/Obsidian Vault/ローカル作業フォルダ）
+- ローカル作業フォルダ確定（2026-10-01 ユーザー決定）：`C:\Users\inamori240\Documents`。AI案件のローカルリポジトリ群の親フォルダ＝デスクトップ版Workにアクセス許可するフォルダ（同一）。Weekly-Tasks開発リポジトリの置き場所ではない
 - 正本v1.7 4点とクロスレビュー確定事項md（Drive ID `1FgPbEwDe7NeawKci7A71EyZUyDMSk5J_`、反映先正本v1.7と明記）の確認
 - GAS共通基盤（doGet、共通初期化、2画面枠、タブ移動、共通CSS/JS、エラー枠、本人利用範囲）
   - 本人利用範囲：manifest（executeAs=USER_DEPLOYING / access=MYSELF）と版1デプロイの実設定（Apps Script APIで確認）の両方で設定済み
@@ -34,7 +35,6 @@ IS-00 完了報告
 - ローカルテスト：画面18項目、PoC4画面28項目、正データ11件、試験関数3件、すべて合格
 
 ## 未確認事項
-- ローカル作業フォルダの場所（IS-00「対象資産をREADMEへ記録」のうち未記録の1件）
 - Obsidian VaultのPC側ローカルパス
 - データ行がある状態でのChatGPT Project→Sheets読取（IS-01で正データ保存後に確認）
 
