@@ -5,7 +5,7 @@
 
 ## 状態
 - フォルダ構成・管理ファイル：作成済み
-- docx資料：未配置（`docs/official/` 4点、`docs/implementation/` 8点）
+- docx資料：配置済み（`docs/official/` 4点、`docs/implementation/` 8点）
 - GAS実装：未着手（指示があるまで開始しない）
 
 ## 次の工程
