@@ -7,7 +7,7 @@ IS-00 基盤・正データ構築
 進行中
 
 ## 現在の作業
-IS-00 Sheets構築・実データ試験（完了）
+IS-00 デプロイ更新と実機確認（デプロイ済み・PC/スマホ確認待ち）
 
 ## 完了済み
 - 開発資料の配置
@@ -25,10 +25,13 @@ IS-00 Sheets構築・実データ試験（完了）
   - 履歴（作成・状態変更4件・修正1件）の保存・再読込：合格
   - 試験データの削除：タスク1行・履歴6行を削除し、試験前の状態（見出し行のみ）へ復元
 - 不具合修正：Sheetsが日付文字列を日付型へ自動変換する件（1回目の試験で検出、読込時に文字列へ戻すよう修正）
+- デプロイ作成（2026-10-01）：版1「IS-00 共通基盤」、デプロイID `AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g`
+  - URL：https://script.google.com/a/macros/marubishi-group.co.jp/s/AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g/exec
+  - 実デプロイ設定（Apps Script APIで確認）：access=MYSELF（本人のみ）、executeAs=USER_DEPLOYING
+  - デプロイ前に GAS側コードが src/ と一致することを確認
 
 ## 未確認事項
-- Webアプリのデプロイ設定（manifest上は executeAs=USER_DEPLOYING / access=MYSELF。実デプロイへは未反映）
-- PC／実機スマホでの2画面表示・遷移（実GAS上は未確認）
+- PC／実機スマホでの2画面表示・遷移（デプロイURLでの確認待ち。作業環境からはURLへ接続不可）
 - 受け渡しPoC 4経路（Work→Obsidian、ChatGPT Project→Obsidian読取、ChatGPT Project→Sheets読取、Project分析結果→週間画面）
 - Obsidian Vault の実在場所、ローカル作業フォルダの場所
 - クロスレビュー確定事項md の特定
