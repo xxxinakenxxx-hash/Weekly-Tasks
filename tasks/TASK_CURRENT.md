@@ -7,7 +7,7 @@ IS-00 基盤・正データ構築
 進行中
 
 ## 現在の作業
-IS-00 受け渡しPoC（前提確認済み・PoC1 Work→Obsidian のユーザー実施待ち）
+IS-00 受け渡しPoC（PoC1合格・PoC2 ChatGPT Project→Obsidian読取 のユーザー実施待ち）
 
 ## 完了済み
 - 開発資料の配置
@@ -30,11 +30,15 @@ IS-00 受け渡しPoC（前提確認済み・PoC1 Work→Obsidian のユーザ�
   - 実デプロイ設定（Apps Script APIで確認）：access=MYSELF（本人のみ）、executeAs=USER_DEPLOYING
   - デプロイ前に GAS側コードが src/ と一致することを確認
 - PoC前提確認（Drive上で確認）：Obsidian Vault＝Drive「週間タスクボード/週間タスク」、通常業務.md・AI案件.md は未作成、確定事項md を特定
+- PoC1 Work→Obsidian：合格（2026-10-01、ユーザー確認）
+  - Web版Workが Vault「週間タスク」直下に `通常業務.md` を保存（ID `1EoWLJ_N502YW0P2hJroVNH9HXBUbhOSm`、5438バイト、2026-10-01 17:15 JST 作成）
+  - Markdownとして再読込成功、6件保存、ChatGPT Project側からもDrive上のファイルを読取できた（ユーザー確認）
+  - 作業環境からもDrive経由で内容を読み、6件・見出し構成を確認
 - PCブラウザ確認（2026-10-01、ユーザー実施・画面写真2枚で確認）：週間タスク画面表示、朝ブリーフ画面表示、タブ移動、エラー表示なし：OK
 - 実機スマホ確認（2026-10-01 16:50〜16:51、ユーザー実施・画面写真2枚で確認）：2画面表示、タブ移動（両タブの選択状態を確認）、横はみ出しなし、タブは横幅いっぱいで押せる：OK
 
 ## 未確認事項
-- 受け渡しPoC 4経路（Work→Obsidian、ChatGPT Project→Obsidian読取、ChatGPT Project→Sheets読取、Project分析結果→週間画面）
+- 受け渡しPoC 残り3経路（ChatGPT Project→Obsidian読取、ChatGPT Project→Sheets読取、Project分析結果→週間画面）
 - ローカル作業フォルダの場所、Obsidian VaultのPC側ローカルパス
 - クロスレビュー確定事項md の内容（ファイルは特定済み。作業環境の権限では未読）
 - PoC4（Project分析結果→週間画面）の受け渡し方式（正本で未確定）
