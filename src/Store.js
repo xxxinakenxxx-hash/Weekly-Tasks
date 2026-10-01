@@ -80,10 +80,22 @@ function historySheet_() {
   return sheet;
 }
 
+// Sheets が日付文字列を日付型へ自動変換した場合も、定義どおりの文字列に戻して読む
 function rowToObj_(def, row) {
   var obj = {};
-  def.columns.forEach(function (c, i) { obj[c.key] = row[i]; });
+  def.columns.forEach(function (c, i) {
+    var v = row[i];
+    if (c.dateFormat && Object.prototype.toString.call(v) === '[object Date]') {
+      v = Utilities.formatDate(v, CONFIG.TIME_ZONE, c.dateFormat);
+    }
+    obj[c.key] = v;
+  });
   return obj;
+}
+
+// 最終行の次へ1行追加する
+function appendObj_(sheet, def, obj) {
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, def.columns.length).setValues([objToRow_(def, obj)]);
 }
 
 function objToRow_(def, obj) {
@@ -116,7 +128,7 @@ function createTask(input) {
     task.taskId = 'T-' + Utilities.getUuid();
     validateTask_(task);
     var sheet = tasksSheet_();
-    sheet.appendRow(objToRow_(SHEETS.TASKS, task));
+    appendObj_(sheet, SHEETS.TASKS, task);
     appendHistory_([{ taskId: task.taskId, op: '作成', field: '', before: '', after: '' }]);
     return task;
   });
@@ -158,7 +170,7 @@ function appendHistory_(entries) {
   var sheet = historySheet_();
   var at = Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy-MM-dd HH:mm:ss');
   entries.forEach(function (h) {
-    sheet.appendRow(objToRow_(SHEETS.HISTORY, Object.assign({ at: at }, h)));
+    appendObj_(sheet, SHEETS.HISTORY, Object.assign({ at: at }, h));
   });
 }
 

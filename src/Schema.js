@@ -12,7 +12,7 @@ var SHEETS = {
     name: 'タスク',
     columns: [
       { key: 'taskId', header: 'タスクID', text: true },
-      { key: 'targetWeek', header: '対象週', text: true },
+      { key: 'targetWeek', header: '対象週', text: true, dateFormat: 'yyyy-MM-dd' },
       { key: 'title', header: 'タスク名／案件名' },
       { key: 'kind', header: '種別', values: KIND_VALUES },
       { key: 'day', header: '曜日', values: DAY_VALUES },
@@ -29,7 +29,7 @@ var SHEETS = {
   HISTORY: {
     name: '履歴',
     columns: [
-      { key: 'at', header: '日時', text: true },
+      { key: 'at', header: '日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm:ss' },
       { key: 'taskId', header: 'タスクID', text: true },
       { key: 'op', header: '操作', values: HISTORY_OPS },
       { key: 'field', header: '項目' },
