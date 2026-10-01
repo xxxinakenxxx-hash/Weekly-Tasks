@@ -18,11 +18,12 @@ docs/DB_SCHEMA.md       Google Sheets 正データの項目定義（シート名
 ```
 
 ## 対象資産（IS-00 確認結果）
-| 資産 | 状態 | 確認内容 |
+| 資産 | 状態 | 内容 |
 |---|---|---|
-| 対象GAS | 未作成・要確認 | 個人アカウント（xxxinakenxxx@gmail.com）のDriveに該当Apps Scriptなし。scriptId 未確定。 |
-| Google Sheets | 要確認 | Drive「週間タスクボード」フォルダに同名スプレッドシートあり（会社アカウント所有・1KB）。個人アカウントからは参照不可、ID・中身未確認。 |
-| Google Drive | 確認済み（一部） | フォルダ「週間タスクボード」ID `1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z`（所有者：会社アカウント）。正本4点・実装指示書は個人アカウントから参照不可のため、本リポジトリへ配置済み。 |
-| Obsidian Vault | 要確認 | 正本で Vault＝「週間タスク」フォルダ、`通常業務.md`／`AI案件.md`、サブフォルダなしと確定。実在場所・同期方法は未確認。 |
-| ローカル作業フォルダ | 要確認 | 正本・実装指示書に場所の記載なし。未確認。 |
-| クロスレビュー確定事項md | 要確認 | Driveに「週間タスク・朝ブリーフ_v1.5_クロスレビュー確定事項.md」あり（会社アカウント所有・参照不可）。IS-00で固定すべきmdと同一か未確認。 |
+| 対象GAS | 確認済み | scriptId `1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS`（会社アカウント所有、「週間タスクボード」スプレッドシートに紐づく）。rootDir `src`。 |
+| Webアプリ | 確認済み | 版1デプロイ `AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g`（access=MYSELF、executeAs=USER_DEPLOYING） |
+| Google Sheets | 確認済み | 「週間タスクボード」 ID `1tk1ZaiM1JqPgw9ENAJ8xJN-zT8k4qKYmwroUvE4b1nE`。シート「タスク」「履歴」（docs/DB_SCHEMA.md）。 |
+| Google Drive | 確認済み | フォルダ「週間タスクボード」 ID `1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z`（会社アカウント所有）。正本4点・実装指示書もDrive上に存在。 |
+| Obsidian Vault | 確認済み（Drive上） | Drive「週間タスクボード/週間タスク」 ID `1vAHdhUFYsQ86bnC_OPaWeczZU-_NhHnV`（`.obsidian` 設定フォルダあり）。現在の中身は `ようこそ.md` のみ。`通常業務.md`・`AI案件.md` は未作成。PC側のローカルパスは未確認。 |
+| ローカル作業フォルダ | 未確認 | リポジトリ・正本・Driveに記載なし。 |
+| クロスレビュー確定事項md | 特定済み・内容未読 | Drive「週間タスクボード/週間タスク・朝ブリーフ_v1.5_クロスレビュー確定事項.md」 ID `1FgPbEwDe7NeawKci7A71EyZUyDMSk5J_`（正本v1.7と同時刻 2026-09-11 13:25 JST に保存）。作業環境の権限では内容を読めない。 |
