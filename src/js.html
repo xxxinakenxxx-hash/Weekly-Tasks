@@ -1,0 +1,50 @@
+<script>
+  (function () {
+    // タブ移動
+    function showView(key) {
+      var views = document.querySelectorAll('.view');
+      var found = false;
+      for (var i = 0; i < views.length; i++) {
+        var on = views[i].getAttribute('data-view') === key;
+        views[i].hidden = !on;
+        if (on) found = true;
+      }
+      if (!found) {
+        showError('画面が見つかりません：' + key);
+        return;
+      }
+      var tabs = document.querySelectorAll('.tab');
+      for (var j = 0; j < tabs.length; j++) {
+        var active = tabs[j].getAttribute('data-view') === key;
+        tabs[j].classList.toggle('active', active);
+        tabs[j].setAttribute('aria-selected', active ? 'true' : 'false');
+      }
+    }
+
+    // エラー表示
+    function showError(message) {
+      document.getElementById('error-message').textContent = message;
+      document.getElementById('error-box').hidden = false;
+    }
+    function clearError() {
+      document.getElementById('error-box').hidden = true;
+    }
+
+    // google.script.run の共通呼び出し（失敗時はエラー枠へ表示）
+    function callServer(fnName, args, onSuccess) {
+      google.script.run
+        .withSuccessHandler(function (res) { clearError(); if (onSuccess) onSuccess(res); })
+        .withFailureHandler(function (err) { showError((err && err.message) || String(err)); })[fnName].apply(null, args || []);
+    }
+
+    window.App = { showView: showView, showError: showError, clearError: clearError, callServer: callServer };
+
+    window.addEventListener('error', function (e) { showError(e.message); });
+    document.getElementById('error-close').addEventListener('click', clearError);
+    var tabs = document.querySelectorAll('.tab');
+    for (var k = 0; k < tabs.length; k++) {
+      tabs[k].addEventListener('click', function () { showView(this.getAttribute('data-view')); });
+    }
+    showView(APP_CTX.initialView);
+  })();
+</script>
