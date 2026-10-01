@@ -7,7 +7,7 @@ IS-00 基盤・正データ構築
 進行中
 
 ## 現在の作業
-IS-00 デプロイ更新と実機確認（デプロイ済み・PC/スマホ確認待ち）
+IS-00 デプロイ更新と実機確認（PC確認済み・スマホ確認待ち）
 
 ## 完了済み
 - 開発資料の配置
@@ -29,9 +29,10 @@ IS-00 デプロイ更新と実機確認（デプロイ済み・PC/スマホ確�
   - URL：https://script.google.com/a/macros/marubishi-group.co.jp/s/AKfycbzzfanSJ4PdfHUliYVv2XJHU-ozBiUQw7MYiMPUZl4qjxbMhLcPnC2nQxLfJeHHw4g/exec
   - 実デプロイ設定（Apps Script APIで確認）：access=MYSELF（本人のみ）、executeAs=USER_DEPLOYING
   - デプロイ前に GAS側コードが src/ と一致することを確認
+- PCブラウザ確認（2026-10-01、ユーザー実施・画面写真2枚で確認）：週間タスク画面表示、朝ブリーフ画面表示、タブ移動、エラー表示なし：OK
 
 ## 未確認事項
-- PC／実機スマホでの2画面表示・遷移（デプロイURLでの確認待ち。作業環境からはURLへ接続不可）
+- 実機スマホでの2画面表示・タブ移動・横はみ出し（ユーザー確認待ち）
 - 受け渡しPoC 4経路（Work→Obsidian、ChatGPT Project→Obsidian読取、ChatGPT Project→Sheets読取、Project分析結果→週間画面）
 - Obsidian Vault の実在場所、ローカル作業フォルダの場所
 - クロスレビュー確定事項md の特定
