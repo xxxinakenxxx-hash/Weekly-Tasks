@@ -1,2 +1,38 @@
-<h2 class="view-title">朝ブリーフ</h2>
-<p class="placeholder">朝ブリーフ画面の内容はIS-03で実装します。</p>
+<div class="wk-head">
+  <h2 class="view-title">朝ブリーフ</h2>
+  <div class="wk-nav">
+    <button type="button" id="br-prev" class="btn">◀ 前日</button>
+    <span id="br-date" class="wk-week"></span>
+    <button type="button" id="br-next" class="btn">翌日 ▶</button>
+    <button type="button" id="br-today" class="btn">今日</button>
+  </div>
+</div>
+
+<p id="br-loading" class="wk-muted">読み込み中…</p>
+<p id="br-empty" class="wk-muted" hidden>この日の朝ブリーフはまだ保存されていません。</p>
+<p id="br-preview-note" class="wk-note wk-excluded" hidden>読み込んだ朝ブリーフを表示しています。まだ保存されていません。</p>
+
+<div id="br-body" hidden>
+  <section class="wk-panel br-one-line">
+    <h3>今日の一言</h3>
+    <p id="br-oneLine"></p>
+  </section>
+  <section class="wk-panel"><h3>今日の流れ</h3><ul id="br-flow"></ul></section>
+  <section class="wk-panel"><h3>今日優先すること</h3><ul id="br-priorities"></ul></section>
+  <section class="wk-panel"><h3>気にかけておきたいこと</h3><ul id="br-concerns"></ul></section>
+  <section class="wk-panel"><h3>もう片づいていること</h3><ul id="br-done"></ul></section>
+  <section class="wk-panel"><h3>未完了・持越し</h3><ul id="br-carryover"></ul></section>
+  <p id="br-saved-at" class="wk-muted"></p>
+</div>
+
+<details class="wk-panel" id="br-import">
+  <summary>ChatGPT Project の朝ブリーフを読み込む</summary>
+  <textarea id="br-import-input" class="wk-import-input" rows="6" placeholder="ChatGPT Projectが出力した朝ブリーフのJSONを貼り付けてください"></textarea>
+  <button type="button" id="br-import-load" class="btn btn-primary">読み込む</button>
+</details>
+
+<div class="wk-commit" id="br-save-bar" hidden>
+  <span>読み込んだ朝ブリーフは未保存です</span>
+  <button type="button" id="br-save" class="btn btn-primary">保存</button>
+</div>
+<p id="br-saved" class="wk-saved" role="status" hidden></p>

@@ -5,11 +5,11 @@ const { load } = require('./gas_stub');
 let pass = 0, fail = 0;
 function t(name, fn) { try { fn(); pass++; console.log('PASS ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n  ' + e.message); } }
 
-t('setupSheets：タスク・履歴シートを作成し、既存シート1は変更しない', () => {
+t('setupSheets：タスク・履歴・朝ブリーフシートを作成し、既存シート1は変更しない', () => {
   const g = load();
   g.__sheets['シート1'].data = [['既存']];
   const r = g.setupSheets();
-  assert.deepStrictEqual([...r.created], ['タスク', '履歴']);
+  assert.deepStrictEqual([...r.created], ['タスク', '履歴', '朝ブリーフ']);
   assert.deepStrictEqual(g.__sheets['シート1'].data, [['既存']]);
   assert.strictEqual(g.openedId, '1tk1ZaiM1JqPgw9ENAJ8xJN-zT8k4qKYmwroUvE4b1nE');
   assert.ok(r.schema.every(s => s.ok));
@@ -30,7 +30,7 @@ t('setupSheets：見出しが違う既存シートは上書きせずエラー', 
 t('見出しがDB_SCHEMA.mdの表と一致', () => {
   const g = load();
   const md = fs.readFileSync(path.join(__dirname, '..', 'docs', 'DB_SCHEMA.md'), 'utf8');
-  [g.SHEETS.TASKS, g.SHEETS.HISTORY].forEach(def => {
+  g.ALL_SHEETS.forEach(def => {
     const sec = (md.split('## シート「' + def.name + '」')[1] || '').split('\n## ')[0];
     assert.ok(sec, 'DB_SCHEMA.mdにシート「' + def.name + '」の節がない');
     const headers = sec.split('\n').filter(l => /^\| \d+ \|/.test(l)).map(l => l.split('|')[2].trim());

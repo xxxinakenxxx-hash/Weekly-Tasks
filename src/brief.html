@@ -1,0 +1,102 @@
+<script>
+  // 朝ブリーフ画面（IS-03）：ChatGPT Project の朝ブリーフ（docs/BRIEF_FORMAT.md）を読み込み・保存・表示する
+  (function () {
+    var SECTIONS = [
+      ['今日の流れ', 'flow'], ['今日優先すること', 'priorities'], ['気にかけておきたいこと', 'concerns'],
+      ['もう片づいていること', 'done'], ['未完了・持越し', 'carryover']
+    ];
+    var state = { date: APP_CTX.today, today: APP_CTX.today, preview: null };
+
+    function $(id) { return document.getElementById(id); }
+    function addDays(ymd, n) {
+      var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
+      return d.toISOString().slice(0, 10);
+    }
+    function weekday(ymd) {
+      var p = ymd.split('-').map(Number);
+      return '日月火水木金土'.charAt(new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay());
+    }
+
+    function parseBrief(text) {
+      var data;
+      try { data = JSON.parse(String(text).trim()); } catch (e) { throw new Error('JSONとして読めません：' + e.message); }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('JSONの一番外側は { } にしてください。');
+      var errors = [];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data['日付'] || ''))) errors.push('「日付」は yyyy-MM-dd で指定してください。');
+      if (typeof data['今日の一言'] !== 'string' || !data['今日の一言'].trim()) errors.push('「今日の一言」は必須の文字列です。');
+      var out = { date: data['日付'], oneLine: data['今日の一言'] };
+      SECTIONS.forEach(function (s) {
+        var v = data[s[0]];
+        if (!Array.isArray(v) || v.some(function (x) { return typeof x !== 'string'; })) errors.push('「' + s[0] + '」は文字列の配列で指定してください。');
+        out[s[1]] = v || [];
+      });
+      if (errors.length) throw new Error(errors.join(' '));
+      return out;
+    }
+
+    function render(brief, isPreview) {
+      $('br-date').textContent = state.date + '（' + weekday(state.date) + '）' + (state.date === state.today ? ' 今日' : '');
+      $('br-loading').hidden = true;
+      $('br-empty').hidden = !!brief;
+      $('br-body').hidden = !brief;
+      $('br-preview-note').hidden = !isPreview;
+      $('br-save-bar').hidden = !isPreview;
+      if (!brief) return;
+      $('br-oneLine').textContent = brief.oneLine;
+      SECTIONS.forEach(function (s) {
+        var ul = $('br-' + s[1]); ul.innerHTML = '';
+        if (!brief[s[1]].length) {
+          var none = document.createElement('li'); none.className = 'wk-muted'; none.textContent = 'なし'; ul.appendChild(none);
+        }
+        brief[s[1]].forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+      });
+      $('br-saved-at').textContent = isPreview ? '' : '保存日時：' + brief.savedAt;
+    }
+
+    function load(date) {
+      state.preview = null;
+      $('br-loading').hidden = false;
+      $('br-saved').hidden = true;
+      App.callServer('getMorningBrief', [date], function (res) {
+        state.date = res.date; state.today = res.today;
+        render(res.brief, false);
+      });
+    }
+    function move(n) {
+      if (state.preview && !window.confirm('保存していない朝ブリーフがあります。破棄して移動しますか？')) return;
+      load(n === null ? state.today : addDays(state.date, n));
+    }
+
+    $('br-prev').addEventListener('click', function () { move(-1); });
+    $('br-next').addEventListener('click', function () { move(1); });
+    $('br-today').addEventListener('click', function () { move(null); });
+    $('br-import-load').addEventListener('click', function () {
+      try {
+        var b = parseBrief($('br-import-input').value);
+        state.preview = b; state.date = b.date;
+        $('br-import').open = false;
+        $('br-saved').hidden = true;
+        render(b, true);
+        App.clearError();
+      } catch (e) { App.showError(e.message); }
+    });
+    $('br-save').addEventListener('click', function () {
+      if (!state.preview) return;
+      $('br-save').disabled = true;
+      App.callServer('saveMorningBrief', [state.preview], function (res) {
+        state.preview = null; state.date = res.date;
+        $('br-save').disabled = false;
+        render(res.brief, false);
+        $('br-saved').textContent = '保存しました。';
+        $('br-saved').hidden = false;
+      }, function () { $('br-save').disabled = false; });
+    });
+
+    window.Brief = { parse: parseBrief };
+    var loaded = false;
+    // 朝ブリーフタブを初めて開いたときに読み込む
+    function ensureLoaded() { if (!loaded) { loaded = true; load(state.date); } }
+    document.querySelector('.tab[data-view="brief"]').addEventListener('click', ensureLoaded);
+    if (APP_CTX.initialView === 'brief') ensureLoaded();
+  })();
+</script>

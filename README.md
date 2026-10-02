@@ -12,7 +12,8 @@ docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1
 docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」13列、「履歴」6列）
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式
-docs/prompts/           週次の標準指示文（Web版Work・デスクトップ版Work・ChatGPT Project）
+docs/BRIEF_FORMAT.md    朝ブリーフの受け渡し形式（朝情報.md → Project → 画面で保存）
+docs/prompts/           週次・毎朝の標準指示文（Web版Work・デスクトップ版Work・ChatGPT Project）
 ```
 
 ## GASソースとテスト
@@ -22,10 +23,12 @@ src/                    GASソース（clasp push の対象）
   Code.js               doGet・共通初期化・エラー画面
   Config.js / Schema.js / Store.js   正データ設定・定義・読み書き（履歴付き）
   Board.js              週間タスク画面のサーバー処理（getWeekBoard・commitWeekBoard）
+  Brief.js              朝ブリーフのサーバー処理（getMorningBrief・saveMorningBrief）
   Is00Test.js           IS-00 実データ試験（runIs00SheetTest）
   index.html ほか       2画面枠・タブ移動・共通CSS/JS・エラー枠
   view_weekly.html / weekly.html   週間タスク画面（表示・編集・候補の採用/削除・1回確定・再読込）
-tests/                  ローカルテスト（node tests/store.test.js、node tests/is00test.test.js、node tests/board.test.js）
+  view_brief.html / brief.html     朝ブリーフ画面（読込・保存・日付切替・表示）
+tests/                  ローカルテスト（node tests/store.test.js、is00test.test.js、board.test.js、brief.test.js）
 ```
 
 ## 対象資産（IS-00 確認結果）

@@ -14,7 +14,7 @@ function openSpreadsheet_() {
 function setupSheets() {
   var ss = openSpreadsheet_();
   var created = [];
-  [SHEETS.TASKS, SHEETS.HISTORY].forEach(function (def) {
+  ALL_SHEETS.forEach(function (def) {
     var sheet = ss.getSheetByName(def.name);
     if (!sheet) {
       sheet = ss.insertSheet(def.name);
@@ -54,7 +54,7 @@ function assertHeader_(sheet, def) {
 /** Sheets実表とDB_SCHEMAの一致確認 */
 function checkSchema() {
   var ss = openSpreadsheet_();
-  return [SHEETS.TASKS, SHEETS.HISTORY].map(function (def) {
+  return ALL_SHEETS.map(function (def) {
     var sheet = ss.getSheetByName(def.name);
     if (!sheet) return { sheet: def.name, ok: false, problem: 'シートなし' };
     try {

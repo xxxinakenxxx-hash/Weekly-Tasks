@@ -36,8 +36,24 @@ var SHEETS = {
       { key: 'before', header: '変更前' },
       { key: 'after', header: '変更後' }
     ]
+  },
+  BRIEF: {
+    name: '朝ブリーフ',
+    columns: [
+      { key: 'date', header: '日付', text: true, dateFormat: 'yyyy-MM-dd' },
+      { key: 'savedAt', header: '保存日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm:ss' },
+      { key: 'oneLine', header: '今日の一言' },
+      { key: 'flow', header: '今日の流れ' },
+      { key: 'priorities', header: '今日優先すること' },
+      { key: 'concerns', header: '気にかけておきたいこと' },
+      { key: 'done', header: 'もう片づいていること' },
+      { key: 'carryover', header: '未完了・持越し' }
+    ]
   }
 };
+
+// 正データとして管理するシート（setupSheets・checkSchema の対象）
+var ALL_SHEETS = [SHEETS.TASKS, SHEETS.HISTORY, SHEETS.BRIEF];
 
 function headersOf_(def) {
   return def.columns.map(function (c) { return c.header; });

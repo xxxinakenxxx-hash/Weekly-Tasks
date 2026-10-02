@@ -7,7 +7,16 @@ IS-03 朝ブリーフ実装
 進行中
 
 ## 現在の作業
-IS-03 実装（IS-03_朝ブリーフ実装_v1.1.docx 基準）
+IS-03 実装：ローカル実装・テスト完了、GAS反映前（ユーザー確認待ち）
+
+## IS-03 実施内容（ローカル）
+- 受け渡し方式（2026-10-02 ユーザー決定）：①Web版Work→Project は Drive「週間タスクボード」直下の `朝情報.md`（Vaultの外、毎朝上書き）②Project→朝ブリーフ画面 は貼り付けて「保存」し、Sheets「朝ブリーフ」シートへ追記保存
+- docs/BRIEF_FORMAT.md（JSON形式：機能仕様書 §3 の6項目）、docs/prompts/web_work_morning.md、docs/prompts/project_morning_brief.md（どちらもObsidianを読まない・保存しないと明記）
+- docs/DB_SCHEMA.md：シート「朝ブリーフ」8列を追加（同じ日付の再保存は追記、表示は最新）
+- src/Schema.js（BRIEF定義・ALL_SHEETS）、src/Store.js（setupSheets・checkSchemaを3シート対象に）、src/Brief.js 新規（getMorningBrief・saveMorningBrief。保存時にシートが無ければ作成、既存シートは変更しない）、src/Code.js（today を画面へ）
+- 画面：src/view_brief.html・src/brief.html 新規（前日/翌日/今日、6項目表示、JSON読込→未保存表示→保存、開き直すと保存済みを表示）、src/index.html・src/css.html
+- 不具合修正：hidden 属性が display 指定に負けて保存バーが消えない件（css.html に [hidden] の全体ルール）
+- テスト：brief.test.js 9件、store.test.js 11件、board.test.js 18件、is00test.test.js 3件、画面試験 130項目（既存94＋朝ブリーフ PC/スマホ幅 36）、すべて合格
 
 ## 完了工程
 - IS-00 基盤・正データ構築：完了（2026-10-02 ユーザー確認）。記録は下記「IS-00 記録」

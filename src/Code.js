@@ -37,6 +37,7 @@ function initApp_(e) {
     }),
     appUrl: ScriptApp.getService().getUrl(),
     currentWeek: currentWeek_(),
+    today: currentDate_(),
     statusValues: STATUS_VALUES,
     kindValues: KIND_VALUES,
     dayValues: DAY_VALUES

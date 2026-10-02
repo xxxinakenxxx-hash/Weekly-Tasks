@@ -8,7 +8,7 @@ t('空のシート1だけの状態から試験し、試験行を残さない', (
   const r = g.runIs00SheetTest();
   assert.strictEqual(r.ok, true, JSON.stringify(r));
   assert.strictEqual(r.restored, true);
-  assert.deepStrictEqual([...r.sheetsAfter], ['シート1', 'タスク', '履歴']);
+  assert.deepStrictEqual([...r.sheetsAfter], ['シート1', 'タスク', '履歴', '朝ブリーフ']);
   assert.strictEqual(g.__sheets['タスク'].api.getLastRow(), 1);
   assert.strictEqual(g.__sheets['履歴'].api.getLastRow(), 1);
   assert.deepStrictEqual(g.__sheets['シート1'].data, []);

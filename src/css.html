@@ -9,6 +9,7 @@
     --error-fg: #a12622;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
@@ -90,6 +91,7 @@
   .wk-exception { margin: 6px 0 0; font-size: 12px; color: var(--error-fg); overflow-wrap: anywhere; }
   .wk-commit { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
     margin-top: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
+  .br-one-line p { margin: 0; font-size: 16px; white-space: pre-wrap; }
   .wk-saved { color: #2d6a2d; }
   @media (max-width: 1000px) { .wk-board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 600px) {
