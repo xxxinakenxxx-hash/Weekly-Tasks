@@ -7,7 +7,7 @@ IS-03 朝ブリーフ実装
 進行中
 
 ## 現在の作業
-IS-03 実装：ローカル実装・テスト完了、GAS反映前（ユーザー確認待ち）
+IS-03 実地確認（1/5 完了：朝情報.md 作成。次：ChatGPT Projectで朝ブリーフJSON）
 
 ## IS-03 実施内容（ローカル）
 - 受け渡し方式（2026-10-02 ユーザー決定）：①Web版Work→Project は Drive「週間タスクボード」直下の `朝情報.md`（Vaultの外、毎朝上書き）②Project→朝ブリーフ画面 は貼り付けて「保存」し、Sheets「朝ブリーフ」シートへ追記保存
@@ -17,6 +17,13 @@ IS-03 実装：ローカル実装・テスト完了、GAS反映前（ユーザ�
 - 画面：src/view_brief.html・src/brief.html 新規（前日/翌日/今日、6項目表示、JSON読込→未保存表示→保存、開き直すと保存済みを表示）、src/index.html・src/css.html
 - 不具合修正：hidden 属性が display 指定に負けて保存バーが消えない件（css.html に [hidden] の全体ルール）
 - テスト：brief.test.js 9件、store.test.js 11件、board.test.js 18件、is00test.test.js 3件、画面試験 130項目（既存94＋朝ブリーフ PC/スマホ幅 36）、すべて合格
+- clasp push --force（2026-10-02）：追加 Brief.js・brief.html、変更 Code.js・Schema.js・Store.js・css.html・index.html・view_brief.html。push後GAS側が src/ と一致。公開版1は未更新。Sheetsは未変更
+
+## IS-03 実地確認
+1. Web版Work → 朝情報.md：合格（2026-10-02）
+   - Drive「週間タスクボード」直下（親フォルダID `1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z`、Vaultの外）に保存（ID `14-_bsxOtEBUbh2hgR8sNkjTSe9TLb__s`）。作業環境でDriveから内容を読み照合
+   - 予定1件、要対応メール11件、関係資料7件、取得失敗1件（rakumo案内のDrive資料を特定できず）。期限不明は「要確認」で保持
+   - Obsidian非経由：Vault「週間タスク」内のファイル更新日時は朝情報.md作成より前のまま（通常業務.md 01:24Z、AI案件.md 00:48Z）
 
 ## 完了工程
 - IS-00 基盤・正データ構築：完了（2026-10-02 ユーザー確認）。記録は下記「IS-00 記録」
