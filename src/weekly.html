@@ -39,6 +39,10 @@
         if (t['例外情報'] && !EXCEPTIONS.some(function (e) { return String(t['例外情報']).indexOf(e + '：') === 0; })) {
           errors.push(n + '「例外情報」は「区分：内容」で、区分は ' + EXCEPTIONS.join('／') + ' です。');
         }
+        if (t['AI案件現在地'] !== undefined && t['AI案件現在地'] !== '') {
+          if (typeof t['AI案件現在地'] !== 'string') errors.push(n + '「AI案件現在地」は文字列です。');
+          else if (t['種別'] !== 'AI案件') errors.push(n + '「AI案件現在地」は種別がAI案件の場合だけ指定できます。');
+        }
       });
       if (errors.length) throw new Error(errors.join(' '));
       return data;
@@ -54,7 +58,7 @@
         return {
           key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: t['曜日'] || '',
           priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
-          status: '未着手', exception: t['例外情報'] || ''
+          status: '未着手', exception: t['例外情報'] || '', aiPosition: t['AI案件現在地'] || ''
         };
       });
       $('wk-import').open = false;
@@ -148,6 +152,7 @@
       row.appendChild(focusLabel);
       c.appendChild(row);
 
+      if (t.aiPosition) c.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
       if (t.exception) c.appendChild(el('p', 'wk-exception', t.exception));
       if (t.isCandidate) {
         var del = el('button', 'btn btn-small', '削除');
@@ -226,7 +231,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};

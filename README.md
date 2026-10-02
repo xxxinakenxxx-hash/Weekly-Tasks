@@ -11,6 +11,8 @@ docs/official/          正本（統合企画書・案件概要書・機能仕�
 docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1）
 docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」13列、「履歴」6列）
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
+docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式
+docs/prompts/           週次の標準指示文（Web版Work・デスクトップ版Work・ChatGPT Project）
 ```
 
 ## GASソースとテスト

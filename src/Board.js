@@ -6,7 +6,7 @@
 // 週間画面で変更できる項目（実施結果・メモ・次回申し送りの更新はIS-04）
 var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status'];
 // 候補の採用時に保存する項目
-var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception'];
+var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition'];
 
 /** 対象週の週間ボード（対象週省略時は今週） */
 function getWeekBoard(targetWeek) {

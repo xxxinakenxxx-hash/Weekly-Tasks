@@ -7,7 +7,14 @@ IS-02 週次AI収集・分析連携
 進行中
 
 ## 現在の作業
-IS-02 実装（IS-02_週次AI収集・分析連携_v1.1.docx 基準）
+IS-02 実装（IS-02_週次AI収集・分析連携_v1.1.docx 基準）：ローカル実装・テスト完了、GAS反映前（ユーザー確認待ち）
+
+## IS-02 実施内容（ローカル）
+- docs/OBSIDIAN_FORMAT.md：通常業務.md・AI案件.md の書式（データ設計書 §2.1・§2.2 の項目どおり。AI案件は参照した情報源・不一致の内容・チャット未確認を記録）
+- docs/prompts/：週次の標準指示文3本（web_work_weekly.md、desktop_work_ai.md、project_weekly_analysis.md）
+- docs/HANDOFF_FORMAT.md：タスク案に「AI案件現在地」を追加（種別AI案件のみ）
+- src/Board.js・src/weekly.html・src/css.html：候補の「AI案件現在地」を表示し、確定時にSheets「AI案件現在地」列へ保存。不一致／チャット未確認は例外情報として保存
+- テスト：board.test.js 13件、store.test.js 11件、is00test.test.js 3件、画面試験 70項目、すべて合格
 
 ## 完了工程
 - IS-00 基盤・正データ構築：完了（2026-10-02 ユーザー確認）。記録は下記「IS-00 記録」

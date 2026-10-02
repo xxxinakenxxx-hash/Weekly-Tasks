@@ -85,5 +85,21 @@ t('commitWeekBoard：変更なしはエラー', () => {
   const g = setup();
   assert.throws(() => g.commitWeekBoard(W, {}), /変更がありません/);
 });
+t('commitWeekBoard：AI案件の候補は AI案件現在地 と 不一致/チャット未確認 の例外情報を保存する', () => {
+  const g = setup();
+  g.commitWeekBoard(W, { creates: [
+    { title: '週間タスク・朝ブリーフ', kind: 'AI案件', aiPosition: 'IS-02 途中／手番：ユーザー', exception: '不一致：TASK_CURRENTとDriveの工程が異なる' },
+    { title: '別案件', kind: 'AI案件', aiPosition: 'IS-01 完了', exception: 'チャット未確認：対応するCodexチャットを特定できない' }
+  ] });
+  const tasks = g.getWeekBoard(W).tasks;
+  assert.deepStrictEqual(tasks.map(x => [x.aiPosition, x.exception]), [
+    ['IS-02 途中／手番：ユーザー', '不一致：TASK_CURRENTとDriveの工程が異なる'],
+    ['IS-01 完了', 'チャット未確認：対応するCodexチャットを特定できない']]);
+});
+t('commitWeekBoard：通常タスクに AI案件現在地 は保存できない（何も書かない）', () => {
+  const g = setup();
+  assert.throws(() => g.commitWeekBoard(W, { creates: [{ title: 'X', kind: '通常タスク', aiPosition: 'x' }] }), /AI案件/);
+  assert.strictEqual(g.getWeekBoard(W).tasks.length, 0);
+});
 console.log(`pass=${pass} fail=${fail}`);
 process.exit(fail ? 1 : 0);
