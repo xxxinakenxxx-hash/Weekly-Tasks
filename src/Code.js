@@ -35,7 +35,11 @@ function initApp_(e) {
     views: Object.keys(VIEWS).map(function (key) {
       return { key: key, label: VIEWS[key].label };
     }),
-    appUrl: ScriptApp.getService().getUrl()
+    appUrl: ScriptApp.getService().getUrl(),
+    currentWeek: currentWeek_(),
+    statusValues: STATUS_VALUES,
+    kindValues: KIND_VALUES,
+    dayValues: DAY_VALUES
   };
 }
 

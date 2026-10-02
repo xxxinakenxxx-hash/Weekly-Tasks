@@ -123,47 +123,64 @@ function getHistory(taskId) {
 
 /** タスク作成：IDを採番し、履歴「作成」を記録する */
 function createTask(input) {
-  return withLock_(function () {
-    var task = normalizeTask_(Object.assign({ status: '未着手', focus: false }, input));
-    task.taskId = 'T-' + Utilities.getUuid();
-    validateTask_(task);
-    var sheet = tasksSheet_();
-    appendObj_(sheet, SHEETS.TASKS, task);
-    appendHistory_([{ taskId: task.taskId, op: '作成', field: '', before: '', after: '' }]);
-    return task;
-  });
+  return withLock_(function () { return createTask_(input); });
 }
 
 /** タスク更新：変更項目ごとに履歴を記録する（状態は「状態変更」、他は「修正」） */
 function updateTask(taskId, changes) {
-  return withLock_(function () {
-    if (changes.taskId !== undefined && changes.taskId !== taskId) throw new Error('タスクIDは変更できません。');
-    var sheet = tasksSheet_();
-    var def = SHEETS.TASKS;
-    var last = sheet.getLastRow();
-    var ids = last < 2 ? [] : sheet.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return r[0]; });
-    var idx = ids.indexOf(taskId);
-    if (idx < 0) throw new Error('タスクが見つかりません：' + taskId);
-    var rowNo = idx + 2;
-    var current = rowToObj_(def, sheet.getRange(rowNo, 1, 1, def.columns.length).getValues()[0]);
-    var next = normalizeTask_(Object.assign({}, current, changes));
-    validateTask_(next);
+  return withLock_(function () { return updateTask_(taskId, changes); });
+}
 
-    var history = [];
-    def.columns.forEach(function (c, i) {
-      if (String(current[c.key]) === String(next[c.key])) return;
-      sheet.getRange(rowNo, i + 1).setValue(next[c.key]);
-      history.push({
-        taskId: taskId,
-        op: c.key === 'status' ? '状態変更' : '修正',
-        field: c.header,
-        before: current[c.key],
-        after: next[c.key]
-      });
+// 作成の本体（ロックは呼び出し側で取得する）
+function createTask_(input) {
+  var task = prepareCreate_(input);
+  appendObj_(tasksSheet_(), SHEETS.TASKS, task);
+  appendHistory_([{ taskId: task.taskId, op: '作成', field: '', before: '', after: '' }]);
+  return task;
+}
+
+// 作成内容の正規化・検証・ID採番（書き込みはしない）
+function prepareCreate_(input) {
+  var task = normalizeTask_(Object.assign({ status: '未着手', focus: false }, input));
+  task.taskId = 'T-' + Utilities.getUuid();
+  validateTask_(task);
+  return task;
+}
+
+// 更新の本体（ロックは呼び出し側で取得する）
+function updateTask_(taskId, changes) {
+  var plan = prepareUpdate_(taskId, changes);
+  var sheet = tasksSheet_();
+  var history = [];
+  SHEETS.TASKS.columns.forEach(function (c, i) {
+    if (String(plan.current[c.key]) === String(plan.next[c.key])) return;
+    sheet.getRange(plan.rowNo, i + 1).setValue(plan.next[c.key]);
+    history.push({
+      taskId: taskId,
+      op: c.key === 'status' ? '状態変更' : '修正',
+      field: c.header,
+      before: plan.current[c.key],
+      after: plan.next[c.key]
     });
-    if (history.length) appendHistory_(history);
-    return next;
   });
+  if (history.length) appendHistory_(history);
+  return plan.next;
+}
+
+// 更新内容の正規化・検証（書き込みはしない）
+function prepareUpdate_(taskId, changes) {
+  if (changes.taskId !== undefined && changes.taskId !== taskId) throw new Error('タスクIDは変更できません。');
+  var sheet = tasksSheet_();
+  var def = SHEETS.TASKS;
+  var last = sheet.getLastRow();
+  var ids = last < 2 ? [] : sheet.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return r[0]; });
+  var idx = ids.indexOf(taskId);
+  if (idx < 0) throw new Error('タスクが見つかりません：' + taskId);
+  var rowNo = idx + 2;
+  var current = rowToObj_(def, sheet.getRange(rowNo, 1, 1, def.columns.length).getValues()[0]);
+  var next = normalizeTask_(Object.assign({}, current, changes));
+  validateTask_(next);
+  return { rowNo: rowNo, current: current, next: next };
 }
 
 function appendHistory_(entries) {

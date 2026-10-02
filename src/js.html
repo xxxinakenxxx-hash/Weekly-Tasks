@@ -31,10 +31,13 @@
     }
 
     // google.script.run の共通呼び出し（失敗時はエラー枠へ表示）
-    function callServer(fnName, args, onSuccess) {
+    function callServer(fnName, args, onSuccess, onFailure) {
       google.script.run
         .withSuccessHandler(function (res) { clearError(); if (onSuccess) onSuccess(res); })
-        .withFailureHandler(function (err) { showError((err && err.message) || String(err)); })[fnName].apply(null, args || []);
+        .withFailureHandler(function (err) {
+          showError((err && err.message) || String(err));
+          if (onFailure) onFailure(err);
+        })[fnName].apply(null, args || []);
     }
 
     window.App = { showView: showView, showError: showError, clearError: clearError, callServer: callServer };

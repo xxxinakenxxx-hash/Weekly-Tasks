@@ -57,7 +57,7 @@ function load(opts = {}) {
   };
   vm.createContext(ctx);
   const src = path.join(__dirname, '..', 'src');
-  ['Config.js', 'Schema.js', 'Store.js', 'Code.js', 'Is00Test.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
+  ['Config.js', 'Schema.js', 'Store.js', 'Board.js', 'Code.js', 'Is00Test.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
   ctx.__sheets = sheets;
   return ctx;
 }

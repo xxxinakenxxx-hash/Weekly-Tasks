@@ -1,20 +1,38 @@
-<h2 class="view-title">週間タスク</h2>
-<p class="placeholder">週間タスク画面の内容はIS-01で実装します。</p>
-
-<!-- IS-00 PoC4：ChatGPT Project分析結果の貼り付け表示（保存しない） -->
-<section class="handoff" aria-labelledby="handoff-title">
-  <h3 id="handoff-title" class="handoff-title">ChatGPT Project 分析結果の読み込み</h3>
-  <textarea id="handoff-input" class="handoff-input" rows="6" placeholder="ChatGPT Projectが出力したJSONを貼り付けてください"></textarea>
-  <button type="button" id="handoff-load" class="handoff-load">読み込む</button>
-  <div id="handoff-result" class="handoff-result" hidden>
-    <p class="handoff-note">表示のみです。保存はしていません。</p>
-    <dl class="handoff-meta">
-      <dt>対象週</dt><dd id="handoff-week"></dd>
-      <dt>今週の見立て</dt><dd id="handoff-outlook"></dd>
-    </dl>
-    <h4>注意・コーション</h4>
-    <ul id="handoff-cautions"></ul>
-    <h4>タスク案（<span id="handoff-count"></span>件）</h4>
-    <ul id="handoff-tasks" class="handoff-tasks"></ul>
+<div class="wk-head">
+  <h2 class="view-title">週間タスク</h2>
+  <div class="wk-nav">
+    <button type="button" id="wk-prev" class="btn">◀ 前週</button>
+    <span id="wk-week" class="wk-week"></span>
+    <button type="button" id="wk-next" class="btn">次週 ▶</button>
+    <button type="button" id="wk-reload" class="btn">再読込</button>
   </div>
+</div>
+
+<section class="wk-panel" aria-labelledby="wk-outlook-title">
+  <h3 id="wk-outlook-title">今週の要点</h3>
+  <p id="wk-outlook" class="wk-muted">ChatGPT Project の分析結果は未読込です。</p>
+  <h3>注意・コーション</h3>
+  <ul id="wk-cautions"><li class="wk-muted">未読込</li></ul>
 </section>
+
+<section class="wk-panel" aria-labelledby="wk-focus-title">
+  <h3 id="wk-focus-title">今週の重点（<span id="wk-focus-count">0</span>件）</h3>
+  <p id="wk-focus-note" class="wk-note" hidden></p>
+  <ol id="wk-focus"></ol>
+</section>
+
+<details class="wk-panel" id="wk-import">
+  <summary>ChatGPT Project の分析結果を読み込む</summary>
+  <textarea id="wk-import-input" class="wk-import-input" rows="6" placeholder="ChatGPT Projectが出力したJSONを貼り付けてください"></textarea>
+  <button type="button" id="wk-import-load" class="btn btn-primary">読み込む</button>
+  <p class="wk-muted">読み込んだタスク案は「候補」として下のボードに表示されます。確定するまで保存されません。</p>
+</details>
+
+<p id="wk-loading" class="wk-muted">読み込み中…</p>
+<div id="wk-board" class="wk-board" hidden></div>
+
+<div class="wk-commit">
+  <span id="wk-pending" class="wk-pending">未確定の変更はありません</span>
+  <button type="button" id="wk-commit" class="btn btn-primary" disabled>確定して保存</button>
+</div>
+<p id="wk-saved" class="wk-saved" role="status" hidden></p>

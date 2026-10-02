@@ -1,0 +1,262 @@
+<script>
+  // 週間タスク画面（IS-01）：表示・編集・候補の採用/削除・1回確定・再読込
+  (function () {
+    var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
+    var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status'];
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0 };
+
+    function $(id) { return document.getElementById(id); }
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+    function addDays(ymd, n) {
+      var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
+      return d.toISOString().slice(0, 10);
+    }
+
+    // ---- ChatGPT Project 分析結果（docs/HANDOFF_FORMAT.md）----
+    function parseHandoff(text) {
+      var data;
+      try { data = JSON.parse(String(text).trim()); } catch (e) { throw new Error('JSONとして読めません：' + e.message); }
+      var errors = [];
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('JSONの一番外側は { } にしてください。');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data['対象週'] || ''))) errors.push('「対象週」は yyyy-MM-dd で指定してください。');
+      if (typeof data['見立て'] !== 'string') errors.push('「見立て」は文字列で指定してください。');
+      if (!Array.isArray(data['コーション'])) errors.push('「コーション」は配列で指定してください。');
+      if (!Array.isArray(data['タスク案'])) errors.push('「タスク案」は配列で指定してください。');
+      (data['タスク案'] || []).forEach(function (t, i) {
+        var n = (i + 1) + '件目：';
+        if (!t || typeof t !== 'object') { errors.push(n + '形式が不正です。'); return; }
+        if (!t['タスク名']) errors.push(n + '「タスク名」は必須です。');
+        if (KINDS.indexOf(t['種別']) < 0) errors.push(n + '「種別」は ' + KINDS.join('／') + ' のいずれかです。');
+        if (t['曜日'] && DAYS.indexOf(t['曜日']) < 0) errors.push(n + '「曜日」は 月〜金 または空欄です。');
+        if (t['優先度'] !== undefined && t['優先度'] !== '' && !(Number(t['優先度']) >= 1 && Number(t['優先度']) % 1 === 0)) errors.push(n + '「優先度」は1以上の整数です。');
+        if (t['重点'] !== undefined && typeof t['重点'] !== 'boolean') errors.push(n + '「重点」は true／false です。');
+        if (t['例外情報'] && !EXCEPTIONS.some(function (e) { return String(t['例外情報']).indexOf(e + '：') === 0; })) {
+          errors.push(n + '「例外情報」は「区分：内容」で、区分は ' + EXCEPTIONS.join('／') + ' です。');
+        }
+      });
+      if (errors.length) throw new Error(errors.join(' '));
+      return data;
+    }
+
+    function importAnalysis() {
+      var data = parseHandoff($('wk-import-input').value);
+      if (data['対象週'] !== state.week) {
+        throw new Error('分析結果の対象週（' + data['対象週'] + '）が表示中の週（' + state.week + '）と違います。');
+      }
+      state.analysis = { outlook: data['見立て'], cautions: data['コーション'] };
+      state.candidates = data['タスク案'].map(function (t) {
+        return {
+          key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: t['曜日'] || '',
+          priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
+          status: '未着手', exception: t['例外情報'] || ''
+        };
+      });
+      $('wk-import').open = false;
+      render();
+    }
+
+    // ---- 表示用データ ----
+    function viewTask(t) {
+      var e = state.edits[t.taskId] || {};
+      var v = {};
+      Object.keys(t).forEach(function (k) { v[k] = e.hasOwnProperty(k) ? e[k] : t[k]; });
+      v.key = t.taskId;
+      v.isCandidate = false;
+      v.changed = Object.keys(e).length > 0;
+      return v;
+    }
+    function allTasks() {
+      var saved = state.saved.map(viewTask);
+      var cands = state.candidates.map(function (c) { var v = Object.assign({}, c); v.isCandidate = true; return v; });
+      return saved.concat(cands).sort(function (a, b) {
+        var pa = a.priority === '' ? Infinity : Number(a.priority), pb = b.priority === '' ? Infinity : Number(b.priority);
+        return pa - pb;
+      });
+    }
+    function changedCount() { return Object.keys(state.edits).length; }
+
+    // ---- 編集 ----
+    function setField(task, key, value) {
+      if (task.isCandidate) {
+        var c = state.candidates.filter(function (x) { return x.key === task.key; })[0];
+        c[key] = value;
+      } else {
+        var orig = state.saved.filter(function (x) { return x.taskId === task.key; })[0];
+        var e = state.edits[task.key] || {};
+        if (String(orig[key]) === String(value)) delete e[key]; else e[key] = value;
+        if (Object.keys(e).length) state.edits[task.key] = e; else delete state.edits[task.key];
+      }
+      render();
+    }
+    function removeCandidate(key) {
+      state.candidates = state.candidates.filter(function (c) { return c.key !== key; });
+      render();
+    }
+
+    // ---- 描画 ----
+    function select(values, current, withBlank, label) {
+      var s = el('select');
+      s.setAttribute('aria-label', label);
+      if (withBlank) { var o = el('option', '', '未配置'); o.value = ''; s.appendChild(o); }
+      values.forEach(function (v) { var o = el('option', '', v); o.value = v; s.appendChild(o); });
+      s.value = current;
+      return s;
+    }
+    function card(t) {
+      var c = el('div', 'wk-card' + (t.isCandidate ? ' is-candidate' : '') + (t.changed ? ' is-changed' : ''));
+      c.setAttribute('data-key', t.key);
+      var top = el('div', 'wk-card-top');
+      top.appendChild(el('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind));
+      if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
+      else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
+      c.appendChild(top);
+
+      var title = el('input', 'wk-title');
+      title.type = 'text'; title.value = t.title; title.setAttribute('aria-label', 'タスク名');
+      title.addEventListener('change', function () {
+        if (!title.value.trim()) { App.showError('タスク名は空にできません。'); title.value = t.title; return; }
+        setField(t, 'title', title.value.trim());
+      });
+      c.appendChild(title);
+
+      var row = el('div', 'wk-fields');
+      var day = select(DAYS, t.day, true, '曜日');
+      day.addEventListener('change', function () { setField(t, 'day', day.value); });
+      var status = select(STATUS, t.status, false, '状態');
+      status.className = 'wk-status';
+      status.addEventListener('change', function () { setField(t, 'status', status.value); });
+      var pri = el('input', 'wk-priority');
+      pri.type = 'number'; pri.min = '1'; pri.step = '1'; pri.value = t.priority; pri.setAttribute('aria-label', '優先度');
+      pri.addEventListener('change', function () {
+        var v = pri.value === '' ? '' : Number(pri.value);
+        if (v !== '' && !(v >= 1 && v % 1 === 0)) { App.showError('優先度は1以上の整数です。'); pri.value = t.priority; return; }
+        setField(t, 'priority', v);
+      });
+      var focusLabel = el('label', 'wk-focus-label');
+      var focus = el('input'); focus.type = 'checkbox'; focus.checked = t.focus === true;
+      focus.addEventListener('change', function () { setField(t, 'focus', focus.checked); });
+      focusLabel.appendChild(focus); focusLabel.appendChild(document.createTextNode('重点'));
+      [['曜日', day], ['状態', status], ['優先度', pri]].forEach(function (p) {
+        var l = el('label', 'wk-field'); l.appendChild(el('span', '', p[0])); l.appendChild(p[1]); row.appendChild(l);
+      });
+      row.appendChild(focusLabel);
+      c.appendChild(row);
+
+      if (t.exception) c.appendChild(el('p', 'wk-exception', t.exception));
+      if (t.isCandidate) {
+        var del = el('button', 'btn btn-small', '削除');
+        del.type = 'button';
+        del.addEventListener('click', function () { removeCandidate(t.key); });
+        c.appendChild(del);
+      }
+      return c;
+    }
+
+    function render() {
+      $('wk-week').textContent = state.week + '（月）〜' + addDays(state.week, 4) + '（金）';
+      var tasks = allTasks();
+
+      // 今週の要点・コーション
+      if (state.analysis) {
+        $('wk-outlook').textContent = state.analysis.outlook;
+        $('wk-outlook').className = '';
+        var ul = $('wk-cautions'); ul.innerHTML = '';
+        state.analysis.cautions.forEach(function (c) { ul.appendChild(el('li', '', String(c))); });
+        if (!state.analysis.cautions.length) ul.appendChild(el('li', 'wk-muted', 'なし'));
+      }
+
+      // 重点
+      var focused = tasks.filter(function (t) { return t.focus === true; });
+      $('wk-focus-count').textContent = focused.length;
+      var ol = $('wk-focus'); ol.innerHTML = '';
+      focused.forEach(function (t) { ol.appendChild(el('li', '', t.title + (t.isCandidate ? '（候補）' : ''))); });
+      var note = $('wk-focus-note');
+      note.hidden = focused.length >= 3 && focused.length <= 5;
+      note.textContent = '重点は3〜5件が目安です（現在' + focused.length + '件）。';
+
+      // 曜日別ボード
+      var board = $('wk-board'); board.innerHTML = '';
+      DAYS.concat(['']).forEach(function (d) {
+        var col = el('section', 'wk-col');
+        col.setAttribute('data-day', d || '未配置');
+        var items = tasks.filter(function (t) { return (t.day || '') === d; });
+        col.appendChild(el('h4', 'wk-col-title', (d || '未配置') + '（' + items.length + '）'));
+        items.forEach(function (t) { col.appendChild(card(t)); });
+        board.appendChild(col);
+      });
+
+      // 確定欄
+      var n = state.candidates.length, m = changedCount();
+      $('wk-pending').textContent = (n || m) ? '未確定の変更：候補 ' + n + '件・変更 ' + m + '件' : '未確定の変更はありません';
+      $('wk-commit').disabled = !(n || m);
+    }
+
+    // ---- サーバー連携 ----
+    function load(week) {
+      $('wk-loading').hidden = false;
+      $('wk-board').hidden = true;
+      $('wk-saved').hidden = true;
+      App.callServer('getWeekBoard', [week], function (res) {
+        state.week = res.targetWeek;
+        state.saved = res.tasks;
+        state.edits = {};
+        $('wk-loading').hidden = true;
+        $('wk-board').hidden = false;
+        render();
+      });
+    }
+    function hasPending() { return state.candidates.length > 0 || changedCount() > 0; }
+    function moveWeek(n) {
+      if (hasPending() && !window.confirm('未確定の変更があります。破棄して移動しますか？')) return;
+      state.candidates = [];
+      if (n !== 0) {
+        // 週を移動したら分析結果の表示も消す（再読込では残す）
+        state.analysis = null;
+        $('wk-outlook').textContent = 'ChatGPT Project の分析結果は未読込です。';
+        $('wk-outlook').className = 'wk-muted';
+        $('wk-cautions').innerHTML = '<li class="wk-muted">未読込</li>';
+      }
+      load(addDays(state.week, n));
+    }
+    function commit() {
+      var creates = state.candidates.map(function (c) {
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception };
+      });
+      var updates = Object.keys(state.edits).map(function (id) {
+        var ch = {};
+        EDIT_KEYS.forEach(function (k) { if (state.edits[id].hasOwnProperty(k)) ch[k] = state.edits[id][k]; });
+        return { taskId: id, changes: ch };
+      });
+      var msg = '次の内容で確定し、保存します。\n候補の採用：' + creates.length + '件\n既存タスクの変更：' + updates.length + '件';
+      if (!window.confirm(msg)) return;
+      $('wk-commit').disabled = true;
+      App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates }], function (res) {
+        state.saved = res.tasks;
+        state.edits = {};
+        state.candidates = [];
+        render();
+        var s = $('wk-saved');
+        s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件）。正データを再読込して表示しています。';
+        s.hidden = false;
+      }, function () { render(); });
+    }
+
+    $('wk-prev').addEventListener('click', function () { moveWeek(-7); });
+    $('wk-next').addEventListener('click', function () { moveWeek(7); });
+    $('wk-reload').addEventListener('click', function () { moveWeek(0); });
+    $('wk-commit').addEventListener('click', commit);
+    $('wk-import-load').addEventListener('click', function () {
+      try { importAnalysis(); App.clearError(); } catch (e) { App.showError(e.message); }
+    });
+    window.addEventListener('beforeunload', function (e) { if (hasPending()) { e.preventDefault(); e.returnValue = ''; } });
+
+    window.Weekly = { parse: parseHandoff, state: state };
+    load(state.week);
+  })();
+</script>
