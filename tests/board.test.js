@@ -101,5 +101,38 @@ t('commitWeekBoard：通常タスクに AI案件現在地 は保存できない�
   assert.throws(() => g.commitWeekBoard(W, { creates: [{ title: 'X', kind: '通常タスク', aiPosition: 'x' }] }), /AI案件/);
   assert.strictEqual(g.getWeekBoard(W).tasks.length, 0);
 });
+t('重複防止：対象週に同名の既存タスクがある候補は追加を拒否し、何も書かない', () => {
+  const g = setup();
+  ['関東販売', 'AIレポート', '丸菱HD', '10月誕生日'].forEach(x => g.createTask({ targetWeek: W, title: x, kind: '通常タスク' }));
+  assert.throws(() => g.commitWeekBoard(W, { creates: [{ title: '新規', kind: '通常タスク' }, { title: '丸菱HD', kind: '通常タスク' }] }), /同名.*丸菱HD/);
+  assert.strictEqual(g.getWeekBoard(W).tasks.length, 4);
+  assert.strictEqual(g.getHistory().length, 4);
+});
+t('重複防止：同じ確定内で同名の候補を2件追加できない', () => {
+  const g = setup();
+  assert.throws(() => g.commitWeekBoard(W, { creates: [{ title: 'X', kind: '通常タスク' }, { title: 'X', kind: 'AI案件' }] }), /同名/);
+  assert.strictEqual(g.getWeekBoard(W).tasks.length, 0);
+});
+t('重複防止：既存タスクを他の既存タスクと同名に変更できない', () => {
+  const g = setup();
+  const a = g.createTask({ targetWeek: W, title: 'A', kind: '通常タスク' });
+  g.createTask({ targetWeek: W, title: 'B', kind: '通常タスク' });
+  assert.throws(() => g.commitWeekBoard(W, { updates: [{ taskId: a.taskId, changes: { title: 'B' } }] }), /名前を変更できません/);
+  assert.strictEqual(g.getWeekBoard(W).tasks.find(t => t.taskId === a.taskId).title, 'A');
+});
+t('重複防止：別の週の同名タスクは重複扱いしない／完全一致のみ（類似名は追加できる）', () => {
+  const g = setup();
+  g.createTask({ targetWeek: '2026-09-21', title: '丸菱HD', kind: '通常タスク' });
+  g.createTask({ targetWeek: W, title: '丸菱HD売上データの照合', kind: '通常タスク' });
+  const r = g.commitWeekBoard(W, { creates: [{ title: '丸菱HD', kind: '通常タスク' }, { title: '丸菱HD売上データの照合 ', kind: '通常タスク' }] });
+  assert.strictEqual(r.created, 2);
+});
+t('重複防止：既存データに重複が残っていても、それに関係しない確定は止めない', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'D', kind: '通常タスク' });
+  g.createTask({ targetWeek: W, title: 'D', kind: '通常タスク' });
+  const r = g.commitWeekBoard(W, { creates: [{ title: 'E', kind: '通常タスク' }] });
+  assert.strictEqual(r.created, 1);
+});
 console.log(`pass=${pass} fail=${fail}`);
 process.exit(fail ? 1 : 0);

@@ -54,7 +54,16 @@
         throw new Error('分析結果の対象週（' + data['対象週'] + '）が表示中の週（' + state.week + '）と違います。');
       }
       state.analysis = { outlook: data['見立て'], cautions: data['コーション'] };
-      state.candidates = data['タスク案'].map(function (t) {
+      // 対象週の保存済みタスクとタスク名が完全一致する案は候補にしない（類似判定はしない）
+      var savedTitles = state.saved.map(function (t) { return String(t.title); });
+      var excluded = [];
+      var proposals = data['タスク案'].filter(function (t) {
+        if (savedTitles.indexOf(String(t['タスク名'])) < 0) return true;
+        excluded.push(String(t['タスク名']));
+        return false;
+      });
+      showExcluded(excluded);
+      state.candidates = proposals.map(function (t) {
         return {
           key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: t['曜日'] || '',
           priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
@@ -63,6 +72,12 @@
       });
       $('wk-import').open = false;
       render();
+    }
+
+    function showExcluded(titles) {
+      var p = $('wk-import-excluded');
+      p.hidden = !titles.length;
+      p.textContent = titles.length ? '既存タスクと同名のため候補から除外：' + titles.length + '件（' + titles.join('、') + '）' : '';
     }
 
     // ---- 表示用データ ----
@@ -220,6 +235,7 @@
     function moveWeek(n) {
       if (hasPending() && !window.confirm('未確定の変更があります。破棄して移動しますか？')) return;
       state.candidates = [];
+      showExcluded([]);
       if (n !== 0) {
         // 週を移動したら分析結果の表示も消す（再読込では残す）
         state.analysis = null;

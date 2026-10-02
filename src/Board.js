@@ -44,6 +44,8 @@ function commitWeekBoard(targetWeek, payload) {
         errors.push('変更「' + u.taskId + '」：' + e.message);
       }
     });
+    // 対象週＋タスク名の完全一致で、この確定によって生じる重複を拒否する（既存行は変更しない）
+    errors = errors.concat(findDuplicateTitles_(getTasks(targetWeek), creates, updates));
     if (errors.length) throw new Error(errors.join('\n'));
 
     creates.forEach(function (c) {
@@ -54,6 +56,30 @@ function commitWeekBoard(targetWeek, payload) {
     });
     return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length };
   });
+}
+
+// 確定後のタスク名を求め、追加・名前変更が対象週の他タスクと完全一致するものを返す
+function findDuplicateTitles_(weekTasks, creates, updates) {
+  var renamed = {};
+  updates.forEach(function (u) {
+    if (u.changes && u.changes.title !== undefined) renamed[u.taskId] = String(u.changes.title);
+  });
+  var after = weekTasks.map(function (t) {
+    return { id: t.taskId, title: renamed.hasOwnProperty(t.taskId) ? renamed[t.taskId] : String(t.title) };
+  });
+  var errors = [];
+  after.forEach(function (t) {
+    if (!renamed.hasOwnProperty(t.id)) return;
+    var clash = after.some(function (o) { return o.id !== t.id && o.title === t.title; });
+    if (clash) errors.push('対象週に同名のタスクがすでにあるため名前を変更できません：' + t.title);
+  });
+  var titles = after.map(function (t) { return t.title; });
+  creates.forEach(function (c) {
+    var title = String(c.title);
+    if (titles.indexOf(title) >= 0) errors.push('対象週に同名のタスクがすでにあるため追加できません：' + title);
+    titles.push(title);
+  });
+  return errors;
 }
 
 // 今週（Asia/Tokyo）の月曜日 yyyy-MM-dd
