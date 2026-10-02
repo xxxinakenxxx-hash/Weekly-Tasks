@@ -7,7 +7,7 @@ IS-02 週次AI収集・分析連携
 進行中
 
 ## 現在の作業
-IS-02 実装（IS-02_週次AI収集・分析連携_v1.1.docx 基準）：ローカル実装・テスト完了、GAS反映前（ユーザー確認待ち）
+IS-02 実地確認（1/5 完了：AI案件.md 作成。次：Web版Workで通常業務.md 再作成）
 
 ## IS-02 実施内容（ローカル）
 - docs/OBSIDIAN_FORMAT.md：通常業務.md・AI案件.md の書式（データ設計書 §2.1・§2.2 の項目どおり。AI案件は参照した情報源・不一致の内容・チャット未確認を記録）
@@ -15,6 +15,15 @@ IS-02 実装（IS-02_週次AI収集・分析連携_v1.1.docx 基準）：ロー�
 - docs/HANDOFF_FORMAT.md：タスク案に「AI案件現在地」を追加（種別AI案件のみ）
 - src/Board.js・src/weekly.html・src/css.html：候補の「AI案件現在地」を表示し、確定時にSheets「AI案件現在地」列へ保存。不一致／チャット未確認は例外情報として保存
 - テスト：board.test.js 13件、store.test.js 11件、is00test.test.js 3件、画面試験 70項目、すべて合格
+- clasp push --force（2026-10-02）：変更 Board.js・weekly.html・css.html の3ファイルのみ（push前後で確認）。公開版1は未更新
+
+## IS-02 実地確認
+1. デスクトップ版Work → AI案件.md：合格（2026-10-02）
+   - Drive「週間タスク」直下に保存（ID `1SUInq0pnVTSKo6vGNCPW5490umgTRLdE`）。作業環境でDriveから内容を読み、Workの報告と照合
+   - 案件4件（機械売上管理システム／機械販売事例まとめアプリ／営業AI音声メモ／管理職AIメモ）。各案件の TASK_CURRENT.md は `C:\Users\inamori240\Documents` 配下の各リポジトリ `tasks\TASK_CURRENT.md`
+   - 情報源整合：不一致2件（機械販売事例まとめアプリ、営業AI音声メモ。不一致の内容を記載）、要確認2件（機械売上管理システム、管理職AIメモ）
+   - Codexチャット：特定2件（機械売上管理システム、営業AI音声メモ）、チャット未確認2件（機械販売事例まとめアプリ、管理職AIメモ）
+   - 書式は docs/OBSIDIAN_FORMAT.md どおり（項目・参照した情報源・不一致の内容）
 
 ## 完了工程
 - IS-00 基盤・正データ構築：完了（2026-10-02 ユーザー確認）。記録は下記「IS-00 記録」
