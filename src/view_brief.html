@@ -25,6 +25,18 @@
   <p id="br-saved-at" class="wk-muted"></p>
 </div>
 
+<section class="wk-panel" id="br-tasks-panel">
+  <h3 id="br-tasks-title">今週のタスク</h3>
+  <p class="wk-muted br-tasks-note">日中の結果をここで更新できます。保存すると週間タスク画面にも反映されます。</p>
+  <p id="br-tasks-empty" class="wk-muted" hidden>この週の確定タスクはありません。</p>
+  <h4 id="br-today-title" class="br-group-title"></h4>
+  <div id="br-tasks-today"></div>
+  <details id="br-tasks-other-wrap">
+    <summary id="br-tasks-other-title">その他の今週のタスク</summary>
+    <div id="br-tasks-other"></div>
+  </details>
+</section>
+
 <details class="wk-panel" id="br-import">
   <summary>ChatGPT Project の朝ブリーフを読み込む</summary>
   <textarea id="br-import-input" class="wk-import-input" rows="6" placeholder="ChatGPT Projectが出力した朝ブリーフのJSONを貼り付けてください"></textarea>

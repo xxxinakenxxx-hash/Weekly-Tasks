@@ -23,7 +23,8 @@ var SHEETS = {
       { key: 'memo', header: 'メモ' },
       { key: 'handover', header: '次回申し送り' },
       { key: 'exception', header: '例外情報' },
-      { key: 'aiPosition', header: 'AI案件現在地' }
+      { key: 'aiPosition', header: 'AI案件現在地' },
+      { key: 'sourceTaskId', header: '持越し元タスクID', text: true }
     ]
   },
   HISTORY: {

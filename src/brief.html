@@ -60,6 +60,7 @@
       App.callServer('getMorningBrief', [date], function (res) {
         state.date = res.date; state.today = res.today;
         render(res.brief, false);
+        loadTasks();
       });
     }
     function move(n) {
@@ -92,11 +93,97 @@
       }, function () { $('br-save').disabled = false; });
     });
 
+    // ---- 今週のタスクの日次更新（IS-04）----
+    var STATUS = APP_CTX.statusValues, DAYS = APP_CTX.dayValues;
+    var tasksState = { week: null, tasks: [] };
+    function mondayOf(ymd) {
+      var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+      return d.toISOString().slice(0, 10);
+    }
+    function mk(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+    function taskRow(t) {
+      var box = mk('div', 'wk-card br-task');
+      box.setAttribute('data-task-id', t.taskId);
+      var top = mk('div', 'wk-card-top');
+      top.appendChild(mk('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind));
+      box.appendChild(top);
+      box.appendChild(mk('p', 'br-task-title', t.title));
+      var row = mk('div', 'wk-fields');
+      var status = mk('select'); status.setAttribute('aria-label', '状態');
+      STATUS.forEach(function (v) { var o = mk('option', '', v); o.value = v; status.appendChild(o); });
+      status.value = t.status;
+      var day = mk('select'); day.setAttribute('aria-label', '曜日');
+      var o0 = mk('option', '', '未配置'); o0.value = ''; day.appendChild(o0);
+      DAYS.forEach(function (v) { var o = mk('option', '', v); o.value = v; day.appendChild(o); });
+      day.value = t.day || '';
+      [['状態', status], ['曜日', day]].forEach(function (p) {
+        var l = mk('label', 'wk-field'); l.appendChild(mk('span', '', p[0])); l.appendChild(p[1]); row.appendChild(l);
+      });
+      box.appendChild(row);
+      var fields = {};
+      [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']].forEach(function (f) {
+        var l = mk('label', 'wk-record-field'); l.appendChild(mk('span', '', f[1]));
+        var ta = mk('textarea'); ta.rows = 2; ta.value = t[f[0]] || ''; ta.setAttribute('aria-label', f[1]);
+        l.appendChild(ta); box.appendChild(l); fields[f[0]] = ta;
+      });
+      var btn = mk('button', 'btn btn-primary btn-small', '保存'); btn.type = 'button';
+      var msg = mk('span', 'wk-saved br-task-msg');
+      btn.addEventListener('click', function () {
+        var changes = {};
+        if (status.value !== t.status) changes.status = status.value;
+        if (day.value !== (t.day || '')) changes.day = day.value;
+        Object.keys(fields).forEach(function (k) { if (fields[k].value !== (t[k] || '')) changes[k] = fields[k].value; });
+        if (!Object.keys(changes).length) { msg.textContent = '変更はありません'; return; }
+        btn.disabled = true;
+        App.callServer('commitWeekBoard', [tasksState.week, { updates: [{ taskId: t.taskId, changes: changes }] }], function (res) {
+          tasksState.tasks = res.tasks;
+          renderTasks();
+          var m = document.querySelector('.br-task[data-task-id="' + t.taskId + '"] .br-task-msg');
+          if (m) m.textContent = '保存しました';
+        }, function () { btn.disabled = false; });
+      });
+      var foot = mk('div', 'br-task-foot'); foot.appendChild(btn); foot.appendChild(msg);
+      box.appendChild(foot);
+      return box;
+    }
+    function renderTasks() {
+      var wd = weekday(state.date);
+      var todayTasks = tasksState.tasks.filter(function (t) { return t.day === wd; });
+      var others = tasksState.tasks.filter(function (t) { return t.day !== wd; });
+      $('br-tasks-title').textContent = '今週のタスク（' + tasksState.week + ' の週）';
+      $('br-tasks-empty').hidden = tasksState.tasks.length > 0;
+      $('br-today-title').textContent = wd + '曜日のタスク（' + todayTasks.length + '件）';
+      $('br-today-title').hidden = !tasksState.tasks.length;
+      $('br-tasks-other-title').textContent = 'その他の今週のタスク（' + others.length + '件）';
+      $('br-tasks-other-wrap').hidden = !others.length;
+      var a = $('br-tasks-today'), b = $('br-tasks-other');
+      a.innerHTML = ''; b.innerHTML = '';
+      todayTasks.forEach(function (t) { a.appendChild(taskRow(t)); });
+      others.forEach(function (t) { b.appendChild(taskRow(t)); });
+    }
+    function loadTasks() {
+      var week = mondayOf(state.date);
+      App.callServer('getWeekBoard', [week], function (res) {
+        tasksState.week = res.targetWeek; tasksState.tasks = res.tasks;
+        renderTasks();
+      });
+    }
+
     window.Brief = { parse: parseBrief };
     var loaded = false;
     // 朝ブリーフタブを初めて開いたときに読み込む
     function ensureLoaded() { if (!loaded) { loaded = true; load(state.date); } }
-    document.querySelector('.tab[data-view="brief"]').addEventListener('click', ensureLoaded);
+    document.addEventListener('viewshown', function (e) {
+      if (e.detail !== 'brief') return;
+      if (!loaded) { ensureLoaded(); return; }
+      loadTasks();
+    });
     if (APP_CTX.initialView === 'brief') ensureLoaded();
   })();
 </script>

@@ -3,8 +3,9 @@
   (function () {
     var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
     var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0 };
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover'];
+    var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {} };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -134,6 +135,7 @@
       top.appendChild(el('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind));
       if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
       else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
+      if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
       c.appendChild(top);
 
       var title = el('input', 'wk-title');
@@ -168,6 +170,11 @@
       c.appendChild(row);
 
       if (t.aiPosition) c.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
+      if (t.isCandidate) {
+        if (t.handover) c.appendChild(el('p', 'wk-handover', '前週の申し送り：' + t.handover));
+      } else {
+        c.appendChild(recordEditor(t));
+      }
       if (t.exception) c.appendChild(el('p', 'wk-exception', t.exception));
       if (t.isCandidate) {
         var del = el('button', 'btn btn-small', '削除');
@@ -176,6 +183,25 @@
         c.appendChild(del);
       }
       return c;
+    }
+
+    // 実施結果・メモ・次回申し送り（保存済みタスクのみ）
+    function recordEditor(t) {
+      var d = el('details', 'wk-record');
+      d.open = !!state.openRecords[t.key];
+      d.addEventListener('toggle', function () { state.openRecords[t.key] = d.open; });
+      var filled = RECORD_FIELDS.filter(function (f) { return t[f[0]]; }).length;
+      d.appendChild(el('summary', '', '記録（実施結果・メモ・次回申し送り）' + (filled ? '：' + filled + '件記入' : '')));
+      RECORD_FIELDS.forEach(function (f) {
+        var l = el('label', 'wk-record-field');
+        l.appendChild(el('span', '', f[1]));
+        var ta = el('textarea');
+        ta.rows = 2; ta.value = t[f[0]] || ''; ta.setAttribute('aria-label', f[1]);
+        ta.addEventListener('change', function () { setField(t, f[0], ta.value); });
+        l.appendChild(ta);
+        d.appendChild(l);
+      });
+      return d;
     }
 
     function render() {
@@ -247,7 +273,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '' };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};
@@ -277,7 +303,31 @@
     });
     window.addEventListener('beforeunload', function (e) { if (hasPending()) { e.preventDefault(); e.returnValue = ''; } });
 
+    // 前週の「次週候補」「持越し」を候補として取り込む（保存は「確定して保存」）
+    function importCarry() {
+      App.callServer('getCarryCandidates', [state.week], function (res) {
+        var titles = state.candidates.map(function (c) { return c.title; });
+        var added = 0, skipped = res.excluded.slice();
+        res.candidates.forEach(function (c) {
+          if (titles.indexOf(c.title) >= 0) { skipped.push(c.title); return; }
+          c.key = 'c' + (++state.seq);
+          state.candidates.push(c);
+          added++;
+        });
+        var p = $('wk-import-excluded');
+        p.hidden = false;
+        p.textContent = '前週（' + res.fromWeek + '）の次週候補・持越しから候補に追加：' + added + '件' +
+          (skipped.length ? '。取り込み済み・同名のため除外：' + skipped.length + '件（' + skipped.join('、') + '）' : '');
+        render();
+      });
+    }
+
     window.Weekly = { parse: parseHandoff, state: state };
+    $('wk-carry').addEventListener('click', importCarry);
+    // 週間画面を表示したとき、未確定の変更がなければ正データを読み直す（朝ブリーフ画面での更新を反映）
+    document.addEventListener('viewshown', function (e) {
+      if (e.detail === 'weekly' && !hasPending()) load(state.week);
+    });
     load(state.week);
   })();
 </script>

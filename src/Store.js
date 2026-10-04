@@ -23,6 +23,7 @@ function setupSheets() {
     if (sheet.getLastRow() === 0) {
       writeHeader_(sheet, def);
     } else {
+      if (def === SHEETS.TASKS) upgradeTasksHeader_(sheet);
       assertHeader_(sheet, def);
     }
   });
@@ -41,6 +42,18 @@ function writeHeader_(sheet, def) {
         .requireValueInList(c.values, true).setAllowInvalid(false).build());
     }
   });
+}
+
+// IS-04：IS-00〜03 の13列の「タスク」シートに「持越し元タスクID」列を末尾追加する（既存の列・行は変更しない）
+function upgradeTasksHeader_(sheet) {
+  var def = SHEETS.TASKS;
+  var headers = headersOf_(def);
+  var last = sheet.getLastColumn();
+  if (last !== headers.length - 1) return;
+  var actual = sheet.getRange(1, 1, 1, last).getValues()[0];
+  if (actual.join('\t') !== headers.slice(0, -1).join('\t')) return;
+  sheet.getRange(1, headers.length).setValue(headers[headers.length - 1]);
+  sheet.getRange(2, headers.length, sheet.getMaxRows() - 1, 1).setNumberFormat('@');
 }
 
 function assertHeader_(sheet, def) {
@@ -69,6 +82,7 @@ function checkSchema() {
 function tasksSheet_() {
   var sheet = openSpreadsheet_().getSheetByName(SHEETS.TASKS.name);
   if (!sheet) throw new Error('シート「' + SHEETS.TASKS.name + '」がありません。setupSheets を実行してください。');
+  upgradeTasksHeader_(sheet);
   assertHeader_(sheet, SHEETS.TASKS);
   return sheet;
 }
@@ -205,7 +219,7 @@ function normalizeTask_(t) {
   var out = Object.assign({}, t);
   out.focus = out.focus === true || out.focus === 'TRUE';
   if (out.priority === undefined || out.priority === null) out.priority = '';
-  ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition'].forEach(function (k) {
+  ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition', 'sourceTaskId'].forEach(function (k) {
     if (out[k] === undefined || out[k] === null) out[k] = '';
   });
   return out;

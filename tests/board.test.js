@@ -64,12 +64,12 @@ t('commitWeekBoard：1件でも不正なら何も書かない', () => {
   assert.strictEqual(g.getWeekBoard(W).tasks[0].status, '未着手');
   assert.strictEqual(g.getHistory().length, 1);
 });
-t('commitWeekBoard：変更できない項目（実施結果・種別・対象週・ID）は無視する', () => {
+t('commitWeekBoard：変更できない項目（種別・対象週・ID・例外情報）は無視する', () => {
   const g = setup();
   const a = g.createTask({ targetWeek: W, title: 'A', kind: '通常タスク' });
-  g.commitWeekBoard(W, { updates: [{ taskId: a.taskId, changes: { result: 'x', kind: 'AI案件', targetWeek: '2026-10-05', taskId: 'T-x', status: '完了' } }] });
+  g.commitWeekBoard(W, { updates: [{ taskId: a.taskId, changes: { exception: '要確認：x', kind: 'AI案件', targetWeek: '2026-10-05', taskId: 'T-x', status: '完了' } }] });
   const x = g.getWeekBoard(W).tasks[0];
-  assert.deepStrictEqual([x.result, x.kind, x.targetWeek, x.taskId, x.status], ['', '通常タスク', W, a.taskId, '完了']);
+  assert.deepStrictEqual([x.exception, x.kind, x.targetWeek, x.taskId, x.status], ['', '通常タスク', W, a.taskId, '完了']);
 });
 t('commitWeekBoard：別の週のタスクは変更できない', () => {
   const g = setup();

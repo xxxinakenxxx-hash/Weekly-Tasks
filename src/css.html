@@ -87,11 +87,21 @@
   .wk-field select, .wk-priority { font-size: 13px; }
   .wk-priority { width: 4em; }
   .wk-focus-label { display: flex; align-items: center; gap: 2px; align-self: flex-end; }
+  .wk-badge.is-carry { background: #e6eefb; color: #1f4f86; }
+  .wk-record { margin-top: 6px; font-size: 12px; }
+  .wk-record summary { cursor: pointer; color: var(--muted); }
+  .wk-record-field { display: flex; flex-direction: column; margin-top: 4px; }
+  .wk-record-field textarea { width: 100%; font-size: 13px; }
+  .wk-handover { margin: 6px 0 0; font-size: 12px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
   .wk-ai-position { margin: 6px 0 0; font-size: 12px; color: #5a2a8a; white-space: pre-wrap; overflow-wrap: anywhere; }
   .wk-exception { margin: 6px 0 0; font-size: 12px; color: var(--error-fg); overflow-wrap: anywhere; }
   .wk-commit { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
     margin-top: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; }
   .br-one-line p { margin: 0; font-size: 16px; white-space: pre-wrap; }
+  .br-group-title { margin: 8px 0 6px; font-size: 14px; }
+  .br-task-title { margin: 2px 0 4px; font-weight: bold; overflow-wrap: anywhere; }
+  .br-task-foot { display: flex; align-items: center; gap: 8px; }
+  #br-tasks-other-wrap summary { cursor: pointer; margin: 8px 0; }
   .wk-saved { color: #2d6a2d; }
   @media (max-width: 1000px) { .wk-board { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   @media (max-width: 600px) {

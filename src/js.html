@@ -19,6 +19,8 @@
         tabs[j].classList.toggle('active', active);
         tabs[j].setAttribute('aria-selected', active ? 'true' : 'false');
       }
+      // 画面切替を各画面へ知らせる（表示時に正データを読み直すため）
+      document.dispatchEvent(new CustomEvent('viewshown', { detail: key }));
     }
 
     // エラー表示
