@@ -191,7 +191,7 @@
       d.open = !!state.openRecords[t.key];
       d.addEventListener('toggle', function () { state.openRecords[t.key] = d.open; });
       var filled = RECORD_FIELDS.filter(function (f) { return t[f[0]]; }).length;
-      d.appendChild(el('summary', '', '記録（実施結果・メモ・次回申し送り）' + (filled ? '：' + filled + '件記入' : '')));
+      d.appendChild(el('summary', 'wk-record-btn', '実施結果・メモ・申し送りを書く' + (filled ? '（' + filled + '項目 記入済み）' : '')));
       RECORD_FIELDS.forEach(function (f) {
         var l = el('label', 'wk-record-field');
         l.appendChild(el('span', '', f[1]));
