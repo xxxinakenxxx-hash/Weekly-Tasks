@@ -95,7 +95,7 @@
 
     // ---- 今週のタスクの日次更新（IS-04）----
     var STATUS = APP_CTX.statusValues, DAYS = APP_CTX.dayValues;
-    var tasksState = { week: null, tasks: [] };
+    var tasksState = { week: null, tasks: [], open: {} };
     function mondayOf(ymd) {
       var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
       d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
@@ -107,13 +107,19 @@
       if (text !== undefined) e.textContent = text;
       return e;
     }
+    // 1件＝1行（種別・タスク名・状態）。押すとその1件の入力欄だけが開く
     function taskRow(t) {
-      var box = mk('div', 'wk-card br-task');
+      var box = mk('details', 'br-task');
       box.setAttribute('data-task-id', t.taskId);
-      var top = mk('div', 'wk-card-top');
-      top.appendChild(mk('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind));
-      box.appendChild(top);
-      box.appendChild(mk('p', 'br-task-title', t.title));
+      if (tasksState.open[t.taskId]) box.open = true;
+      box.addEventListener('toggle', function () { tasksState.open[t.taskId] = box.open; });
+      var sum = mk('summary', 'br-task-line');
+      sum.appendChild(mk('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind === 'AI案件' ? 'AI' : '通常'));
+      sum.appendChild(mk('span', 'br-task-title', t.title));
+      sum.appendChild(mk('span', 'br-task-status', t.status));
+      box.appendChild(sum);
+
+      var body = mk('div', 'br-task-body');
       var row = mk('div', 'wk-fields');
       var status = mk('select'); status.setAttribute('aria-label', '状態');
       STATUS.forEach(function (v) { var o = mk('option', '', v); o.value = v; status.appendChild(o); });
@@ -125,14 +131,14 @@
       [['状態', status], ['曜日', day]].forEach(function (p) {
         var l = mk('label', 'wk-field'); l.appendChild(mk('span', '', p[0])); l.appendChild(p[1]); row.appendChild(l);
       });
-      box.appendChild(row);
+      body.appendChild(row);
       var fields = {};
       [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']].forEach(function (f) {
         var l = mk('label', 'wk-record-field'); l.appendChild(mk('span', '', f[1]));
         var ta = mk('textarea'); ta.rows = 2; ta.value = t[f[0]] || ''; ta.setAttribute('aria-label', f[1]);
-        l.appendChild(ta); box.appendChild(l); fields[f[0]] = ta;
+        l.appendChild(ta); body.appendChild(l); fields[f[0]] = ta;
       });
-      var btn = mk('button', 'btn btn-primary btn-small', '保存'); btn.type = 'button';
+      var btn = mk('button', 'btn btn-primary btn-small', 'この内容で保存'); btn.type = 'button';
       var msg = mk('span', 'wk-saved br-task-msg');
       btn.addEventListener('click', function () {
         var changes = {};
@@ -149,7 +155,8 @@
         }, function () { btn.disabled = false; });
       });
       var foot = mk('div', 'br-task-foot'); foot.appendChild(btn); foot.appendChild(msg);
-      box.appendChild(foot);
+      body.appendChild(foot);
+      box.appendChild(body);
       return box;
     }
     function renderTasks() {
