@@ -8,6 +8,7 @@
   </div>
 </div>
 
+<p id="br-stale" class="wk-stale" role="alert" hidden></p>
 <p id="br-loading" class="wk-muted">読み込み中…</p>
 <p id="br-empty" class="wk-muted" hidden>この日の朝ブリーフはまだ保存されていません。</p>
 <p id="br-preview-note" class="wk-note wk-excluded" hidden>読み込んだ朝ブリーフを表示しています。まだ保存されていません。</p>
@@ -28,6 +29,7 @@
 <section class="wk-panel" id="br-tasks-panel">
   <h3 id="br-tasks-title">今週のタスク</h3>
   <p class="wk-muted br-tasks-note">タスク名を押すと、そのタスクの入力欄が開きます。保存すると週間タスク画面にも反映されます。</p>
+  <p id="br-tasks-stale" class="wk-stale" role="alert" hidden></p>
   <p id="br-tasks-empty" class="wk-muted" hidden>この週の確定タスクはありません。</p>
   <h4 id="br-today-title" class="br-group-title"></h4>
   <div id="br-tasks-today"></div>
@@ -35,6 +37,7 @@
     <summary id="br-tasks-other-title">その他の今週のタスク</summary>
     <div id="br-tasks-other"></div>
   </details>
+  <p id="br-tasks-loaded-at" class="wk-muted wk-loaded-at"></p>
 </section>
 
 <details class="wk-panel" id="br-import">

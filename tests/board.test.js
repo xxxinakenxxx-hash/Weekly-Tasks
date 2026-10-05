@@ -64,12 +64,12 @@ t('commitWeekBoard：1件でも不正なら何も書かない', () => {
   assert.strictEqual(g.getWeekBoard(W).tasks[0].status, '未着手');
   assert.strictEqual(g.getHistory().length, 1);
 });
-t('commitWeekBoard：変更できない項目（種別・対象週・ID・例外情報）は無視する', () => {
+t('commitWeekBoard：変更できない項目（種別・対象週・ID・AI案件現在地）は無視する', () => {
   const g = setup();
   const a = g.createTask({ targetWeek: W, title: 'A', kind: '通常タスク' });
-  g.commitWeekBoard(W, { updates: [{ taskId: a.taskId, changes: { exception: '要確認：x', kind: 'AI案件', targetWeek: '2026-10-05', taskId: 'T-x', status: '完了' } }] });
+  g.commitWeekBoard(W, { updates: [{ taskId: a.taskId, changes: { aiPosition: 'x', kind: 'AI案件', targetWeek: '2026-10-05', taskId: 'T-x', status: '完了' } }] });
   const x = g.getWeekBoard(W).tasks[0];
-  assert.deepStrictEqual([x.exception, x.kind, x.targetWeek, x.taskId, x.status], ['', '通常タスク', W, a.taskId, '完了']);
+  assert.deepStrictEqual([x.aiPosition, x.kind, x.targetWeek, x.taskId, x.status], ['', '通常タスク', W, a.taskId, '完了']);
 });
 t('commitWeekBoard：別の週のタスクは変更できない', () => {
   const g = setup();
@@ -88,8 +88,8 @@ t('commitWeekBoard：変更なしはエラー', () => {
 t('commitWeekBoard：AI案件の候補は AI案件現在地 と 不一致/チャット未確認 の例外情報を保存する', () => {
   const g = setup();
   g.commitWeekBoard(W, { creates: [
-    { title: '週間タスク・朝ブリーフ', kind: 'AI案件', aiPosition: 'IS-02 途中／手番：ユーザー', exception: '不一致：TASK_CURRENTとDriveの工程が異なる' },
-    { title: '別案件', kind: 'AI案件', aiPosition: 'IS-01 完了', exception: 'チャット未確認：対応するCodexチャットを特定できない' }
+    { title: '週間タスク・朝ブリーフ', kind: 'AI案件', aiPosition: 'IS-02 途中／手番：ユーザー', exception: '不一致：TASK_CURRENTとDriveの工程が異なる', exceptionConfirmed: true },
+    { title: '別案件', kind: 'AI案件', aiPosition: 'IS-01 完了', exception: 'チャット未確認：対応するCodexチャットを特定できない', exceptionConfirmed: true }
   ] });
   const tasks = g.getWeekBoard(W).tasks;
   assert.deepStrictEqual(tasks.map(x => [x.aiPosition, x.exception]), [

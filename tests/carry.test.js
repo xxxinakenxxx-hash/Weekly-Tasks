@@ -5,6 +5,8 @@ let pass = 0, fail = 0;
 function t(name, fn) { try { fn(); pass++; console.log('PASS ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n  ' + e.message); } }
 const W = '2026-09-28', N = '2026-10-05';
 function setup() { const g = load(); g.setupSheets(); return g; }
+// 不一致等の確認チェックを入れた状態（画面で確認した想定）
+function confirmAll(cs) { return [...cs].map(c => Object.assign({}, c, { exceptionConfirmed: true })); }
 function seed(g) {
   const ids = {};
   [['完了タスク', '完了'], ['進行中タスク', '進行中'], ['未着手タスク', '未着手'], ['次週候補タスク', '次週候補'], ['持越しタスク', '持越し']].forEach(([title, status], i) => {
@@ -38,7 +40,7 @@ t('持越し確定：翌週に新しい行を作り、持越し元IDで紐付け
   const g = setup(); const ids = seed(g);
   const before = JSON.stringify([g.getTasks(W), g.getHistory()]);
   const r = g.getCarryCandidates(N);
-  g.commitWeekBoard(N, { creates: r.candidates });
+  g.commitWeekBoard(N, { creates: confirmAll(r.candidates) });
   const next = g.getTasks(N);
   assert.deepStrictEqual(next.map(x => [x.title, x.sourceTaskId, x.status, x.result, x.memo]),
     [['次週候補タスク', ids['次週候補タスク'], '未着手', '', ''], ['持越しタスク', ids['持越しタスク'], '未着手', '', '']]);
@@ -48,7 +50,7 @@ t('持越し確定：翌週に新しい行を作り、持越し元IDで紐付け
 t('二重展開防止：取り込み済みの元は候補に出ず、直接渡してもサーバーが拒否する', () => {
   const g = setup(); seed(g);
   const r = g.getCarryCandidates(N);
-  g.commitWeekBoard(N, { creates: r.candidates });
+  g.commitWeekBoard(N, { creates: confirmAll(r.candidates) });
   const r2 = g.getCarryCandidates(N);
   assert.strictEqual(r2.candidates.length, 0);
   assert.deepStrictEqual([...r2.excluded], ['次週候補タスク', '持越しタスク']);

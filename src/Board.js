@@ -3,8 +3,10 @@
  * 表示：対象週の正データを返す。確定：候補の採用と既存タスクの変更を1回でまとめて保存する。
  */
 
-// 週間画面・朝ブリーフ画面で変更できる項目（IS-04で実施結果・メモ・次回申し送りを追加）
-var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover'];
+// 週間画面・朝ブリーフ画面で変更できる項目（IS-04で実施結果・メモ・次回申し送り、IS-05で例外情報を追加）
+var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception'];
+// 採用時に個別の確認が必要な例外区分（IS-05：情報源の不一致等を自動確定しない）
+var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId'];
 // 翌週へ展開する状態
@@ -14,7 +16,35 @@ var CARRY_STATUSES = ['次週候補', '持越し'];
 function getWeekBoard(targetWeek) {
   var week = targetWeek || currentWeek_();
   assertWeek_(week);
-  return { targetWeek: week, tasks: getTasks(week) };
+  return { targetWeek: week, tasks: getTasks(week), loadedAt: nowText_() };
+}
+
+/** タスク1件の変更履歴（古い順）。根拠・状態・時点の追跡用（IS-05） */
+function getTaskHistory(taskId) {
+  if (!taskId) throw new Error('タスクIDを指定してください。');
+  // 画面へ渡せるよう、日付型に自動変換された値も文字列にする
+  var rows = getHistory(taskId).map(function (h) {
+    var o = {};
+    Object.keys(h).forEach(function (k) {
+      o[k] = Object.prototype.toString.call(h[k]) === '[object Date]' ? Utilities.formatDate(h[k], CONFIG.TIME_ZONE, 'yyyy-MM-dd') : String(h[k]);
+    });
+    return o;
+  });
+  return { taskId: taskId, history: rows, loadedAt: nowText_() };
+}
+
+/** 例外情報の区分一覧（「区分：内容」を「／」区切りで複数持てる。区分の後ろの「／」だけを区切りとみなす） */
+function exceptionTypesOf_(text) {
+  var s = String(text || '');
+  if (!s) return [];
+  var re = new RegExp('(?:^|／)(' + EXCEPTION_TYPES.join('|') + ')：', 'g');
+  var out = [], m;
+  while ((m = re.exec(s)) !== null) { if (out.indexOf(m[1]) < 0) out.push(m[1]); }
+  return out;
+}
+
+function nowText_() {
+  return Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy-MM-dd HH:mm:ss');
 }
 
 /**
@@ -32,6 +62,11 @@ function commitWeekBoard(targetWeek, payload) {
     var weekIds = getTasks(targetWeek).map(function (t) { return t.taskId; });
     var errors = [];
     creates.forEach(function (c, i) {
+      // 不一致・チャット未確認の候補は、画面で個別に「確認した」ものだけ保存する（自動確定しない）
+      var needs = exceptionTypesOf_(c.exception).filter(function (x) { return CONFIRM_REQUIRED_EXCEPTIONS.indexOf(x) >= 0; });
+      if (needs.length && c.exceptionConfirmed !== true) {
+        errors.push('追加' + (i + 1) + '件目「' + (c.title || '') + '」：' + needs.join('・') + 'があるため、内容を確認してから採用してください。');
+      }
       try {
         prepareCreate_(Object.assign(pick_(c, BOARD_CREATE_KEYS), { targetWeek: targetWeek }));
       } catch (e) {
@@ -58,7 +93,7 @@ function commitWeekBoard(targetWeek, payload) {
     updates.forEach(function (u) {
       updateTask_(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS));
     });
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length };
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, loadedAt: nowText_() };
   });
 }
 

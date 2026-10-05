@@ -3,9 +3,11 @@
   (function () {
     var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
     var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover'];
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception'];
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {} };
+    // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
+    var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -17,6 +19,36 @@
     function addDays(ymd, n) {
       var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
       return d.toISOString().slice(0, 10);
+    }
+
+    // ---- 例外情報（IS-05）：「区分：内容」を「／」区切りで複数持てる ----
+    var EXC_SPLIT = new RegExp('／(?=(?:' + EXCEPTIONS.join('|') + ')：)');
+    function exceptionParts(text) {
+      var s = String(text || '');
+      if (!s) return [];
+      return s.split(EXC_SPLIT).map(function (p) {
+        var i = p.indexOf('：'), type = p.slice(0, i);
+        return EXCEPTIONS.indexOf(type) >= 0 ? { type: type, body: p.slice(i + 1) } : { type: '', body: p };
+      });
+    }
+    function exceptionTypes(text) {
+      return exceptionParts(text).map(function (p) { return p.type; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; });
+    }
+    function needsConfirm(c) {
+      return exceptionTypes(c.exception).some(function (t) { return CONFIRM_REQUIRED.indexOf(t) >= 0; });
+    }
+    function validException(text) {
+      return !text || EXCEPTIONS.some(function (e) { return String(text).indexOf(e + '：') === 0; });
+    }
+    function exceptionBox(text) {
+      var box = el('div', 'wk-exception');
+      exceptionParts(text).forEach(function (p) {
+        var line = el('p', 'wk-exc-line');
+        line.appendChild(el('span', 'wk-exc-tag', p.type || '例外'));
+        line.appendChild(document.createTextNode(p.body));
+        box.appendChild(line);
+      });
+      return box;
     }
 
     // ---- ChatGPT Project 分析結果（docs/HANDOFF_FORMAT.md）----
@@ -100,6 +132,7 @@
       });
     }
     function changedCount() { return Object.keys(state.edits).length; }
+    function unconfirmed() { return state.candidates.filter(function (c) { return needsConfirm(c) && c.exceptionConfirmed !== true; }); }
 
     // ---- 編集 ----
     function setField(task, key, value) {
@@ -175,7 +208,16 @@
       } else {
         c.appendChild(recordEditor(t));
       }
-      if (t.exception) c.appendChild(el('p', 'wk-exception', t.exception));
+      if (t.exception) c.appendChild(exceptionBox(t.exception));
+      if (t.isCandidate && needsConfirm(t)) {
+        var cl = el('label', 'wk-confirm' + (t.exceptionConfirmed ? ' is-done' : ''));
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.exceptionConfirmed === true;
+        cb.addEventListener('change', function () { setField(t, 'exceptionConfirmed', cb.checked); });
+        cl.appendChild(cb);
+        cl.appendChild(document.createTextNode('上の' + exceptionTypes(t.exception).filter(function (x) { return CONFIRM_REQUIRED.indexOf(x) >= 0; }).join('・') + 'の内容を確認した（チェックするまで保存できません）'));
+        c.appendChild(cl);
+      }
+      if (!t.isCandidate) c.appendChild(historyViewer(t));
       if (t.isCandidate) {
         var del = el('button', 'btn btn-small', '削除');
         del.type = 'button';
@@ -200,6 +242,51 @@
         ta.addEventListener('change', function () { setField(t, f[0], ta.value); });
         l.appendChild(ta);
         d.appendChild(l);
+      });
+      // 例外情報：確認して解消したら空欄にする（変更は履歴に残る）
+      var el2 = el('label', 'wk-record-field');
+      el2.appendChild(el('span', '', '例外情報（解消したら空欄にする。区分：' + EXCEPTIONS.join('／') + '）'));
+      var ex = el('textarea');
+      ex.rows = 2; ex.value = t.exception || ''; ex.setAttribute('aria-label', '例外情報');
+      ex.addEventListener('change', function () {
+        var v = ex.value.trim();
+        if (!validException(v)) { App.showError('例外情報は空欄、または「区分：内容」で書いてください。区分は ' + EXCEPTIONS.join('／') + ' です。'); ex.value = t.exception || ''; return; }
+        setField(t, 'exception', v);
+      });
+      el2.appendChild(ex);
+      d.appendChild(el2);
+      return d;
+    }
+
+    // 変更履歴（保存済みタスクのみ。開いたときに正データから読む）
+    function historyViewer(t) {
+      var d = el('details', 'wk-history');
+      d.appendChild(el('summary', '', '変更履歴を見る'));
+      var box = el('div', 'wk-history-body');
+      d.appendChild(box);
+      function fill() {
+        box.innerHTML = '';
+        box.appendChild(el('p', 'wk-muted', '読み込み中…'));
+        App.callServer('getTaskHistory', [t.key], function (res) {
+          box.innerHTML = '';
+          if (!res.history.length) box.appendChild(el('p', 'wk-muted', '履歴はありません。'));
+          var ul = el('ul', 'wk-history-list');
+          res.history.forEach(function (h) {
+            var txt = h.at + '　' + h.op + (h.field ? '　' + h.field + '：' + (h.before === '' ? '（空欄）' : h.before) + ' → ' + (h.after === '' ? '（空欄）' : h.after) : '');
+            ul.appendChild(el('li', '', txt));
+          });
+          box.appendChild(ul);
+          box.appendChild(el('p', 'wk-muted', res.loadedAt + ' 時点'));
+        }, function () {
+          box.innerHTML = '';
+          box.appendChild(el('p', 'wk-stale', '履歴を読み込めませんでした。閉じて開き直してください。'));
+        });
+      }
+      d.open = !!state.openHistory[t.key];
+      if (d.open) fill();
+      d.addEventListener('toggle', function () {
+        state.openHistory[t.key] = d.open;
+        if (d.open) fill();
       });
       return d;
     }
@@ -239,14 +326,23 @@
 
       // 確定欄
       var n = state.candidates.length, m = changedCount();
-      $('wk-pending').textContent = (n || m) ? '未確定の変更：候補 ' + n + '件・変更 ' + m + '件' : '未確定の変更はありません';
-      $('wk-commit').disabled = !(n || m);
+      var waiting = unconfirmed().length;
+      $('wk-pending').textContent = ((n || m) ? '未確定の変更：候補 ' + n + '件・変更 ' + m + '件' : '未確定の変更はありません') +
+        (waiting ? '。確認待ちの候補が ' + waiting + '件あります（カードのチェックを入れてください）' : '');
+      $('wk-commit').disabled = !(n || m) || waiting > 0;
     }
 
     // ---- サーバー連携 ----
+    // 読込時点の表示（IS-05）。読込に失敗したときは、表示中が前回値であることと時点を示す
+    function showLoaded(at) {
+      state.loadedAt = at;
+      $('wk-loaded-at').textContent = '正データ ' + at + ' 時点';
+      $('wk-stale').hidden = true;
+    }
     function load(week) {
+      var sameWeek = week === state.week && !!state.loadedAt;
       $('wk-loading').hidden = false;
-      $('wk-board').hidden = true;
+      if (!sameWeek) $('wk-board').hidden = true;
       $('wk-saved').hidden = true;
       App.callServer('getWeekBoard', [week], function (res) {
         state.week = res.targetWeek;
@@ -254,7 +350,23 @@
         state.edits = {};
         $('wk-loading').hidden = true;
         $('wk-board').hidden = false;
+        showLoaded(res.loadedAt);
         render();
+      }, function () {
+        $('wk-loading').hidden = true;
+        var st = $('wk-stale');
+        st.hidden = false;
+        if (sameWeek) {
+          // 前回値を残す場合は「前回値」「時点」を明示する
+          st.textContent = '最新の読み込みに失敗しました。表示中は ' + state.loadedAt + ' 時点の前回値です。「再読込」を押して取り直してください。';
+        } else {
+          // 別の週の前回値は表示しない
+          $('wk-board').hidden = true;
+          state.week = week; state.saved = []; state.loadedAt = '';
+          $('wk-week').textContent = week + '（月）〜' + addDays(week, 4) + '（金）';
+          $('wk-loaded-at').textContent = '';
+          st.textContent = 'この週の正データを読み込めませんでした。「再読込」を押して取り直してください。';
+        }
       });
     }
     function hasPending() { return state.candidates.length > 0 || changedCount() > 0; }
@@ -273,7 +385,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '' };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', exceptionConfirmed: c.exceptionConfirmed === true };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};
@@ -287,6 +399,7 @@
         state.saved = res.tasks;
         state.edits = {};
         state.candidates = [];
+        showLoaded(res.loadedAt);
         render();
         var s = $('wk-saved');
         s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件）。正データを再読込して表示しています。';

@@ -5,7 +5,22 @@
       ['今日の流れ', 'flow'], ['今日優先すること', 'priorities'], ['気にかけておきたいこと', 'concerns'],
       ['もう片づいていること', 'done'], ['未完了・持越し', 'carryover']
     ];
-    var state = { date: APP_CTX.today, today: APP_CTX.today, preview: null };
+    var state = { date: APP_CTX.today, today: APP_CTX.today, preview: null, shown: null };
+    var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
+    // 「区分：内容」で始まる行は区分を目印で表示する（IS-05）
+    function itemNode(text) {
+      var li = document.createElement('li');
+      var m = EXCEPTIONS.filter(function (e) { return String(text).indexOf(e + '：') === 0; })[0];
+      if (m) {
+        var tag = document.createElement('span'); tag.className = 'wk-exc-tag'; tag.textContent = m;
+        li.className = 'br-exc';
+        li.appendChild(tag);
+        li.appendChild(document.createTextNode(String(text).slice(m.length + 1)));
+      } else {
+        li.textContent = text;
+      }
+      return li;
+    }
 
     function $(id) { return document.getElementById(id); }
     function addDays(ymd, n) {
@@ -48,7 +63,7 @@
         if (!brief[s[1]].length) {
           var none = document.createElement('li'); none.className = 'wk-muted'; none.textContent = 'なし'; ul.appendChild(none);
         }
-        brief[s[1]].forEach(function (x) { var li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+        brief[s[1]].forEach(function (x) { ul.appendChild(itemNode(x)); });
       });
       $('br-saved-at').textContent = isPreview ? '' : '保存日時：' + brief.savedAt;
     }
@@ -58,9 +73,26 @@
       $('br-loading').hidden = false;
       $('br-saved').hidden = true;
       App.callServer('getMorningBrief', [date], function (res) {
-        state.date = res.date; state.today = res.today;
+        state.date = res.date; state.today = res.today; state.shown = res.date;
+        $('br-stale').hidden = true;
         render(res.brief, false);
         loadTasks();
+      }, function () {
+        // 取得失敗時、別の日の朝ブリーフを表示し続けない（IS-05）
+        $('br-loading').hidden = true;
+        var st = $('br-stale');
+        st.hidden = false;
+        if (state.shown === date) {
+          var at = $('br-saved-at').textContent;
+          st.textContent = '最新の読み込みに失敗しました。表示中は前回読み込んだ内容です' + (at ? '（' + at + '）' : '') + '。';
+        } else {
+          state.date = date; state.shown = null;
+          $('br-date').textContent = date + '（' + weekday(date) + '）' + (date === state.today ? ' 今日' : '');
+          $('br-body').hidden = true; $('br-empty').hidden = true;
+          tasksState.tasks = []; tasksState.loadedAt = '';
+          $('br-tasks-panel').hidden = true;
+          st.textContent = 'この日の朝ブリーフを読み込めませんでした。「今日」または日付の移動ボタンを押して取り直してください。';
+        }
       });
     }
     function move(n) {
@@ -85,7 +117,8 @@
       if (!state.preview) return;
       $('br-save').disabled = true;
       App.callServer('saveMorningBrief', [state.preview], function (res) {
-        state.preview = null; state.date = res.date;
+        state.preview = null; state.date = res.date; state.shown = res.date;
+        $('br-stale').hidden = true;
         $('br-save').disabled = false;
         render(res.brief, false);
         $('br-saved').textContent = '保存しました。';
@@ -95,7 +128,7 @@
 
     // ---- 今週のタスクの日次更新（IS-04）----
     var STATUS = APP_CTX.statusValues, DAYS = APP_CTX.dayValues;
-    var tasksState = { week: null, tasks: [], open: {} };
+    var tasksState = { week: null, tasks: [], open: {}, loadedAt: '' };
     function mondayOf(ymd) {
       var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
       d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
@@ -116,6 +149,9 @@
       var sum = mk('summary', 'br-task-line');
       sum.appendChild(mk('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind === 'AI案件' ? 'AI' : '通常'));
       sum.appendChild(mk('span', 'br-task-title', t.title));
+      // 例外情報がある場合は区分を目印で出す（IS-05）
+      EXCEPTIONS.filter(function (e) { return new RegExp('(^|／)' + e + '：').test(String(t.exception || '')); })
+        .forEach(function (e) { sum.appendChild(mk('span', 'wk-exc-tag', e)); });
       sum.appendChild(mk('span', 'br-task-status', t.status));
       box.appendChild(sum);
 
@@ -148,12 +184,16 @@
         if (!Object.keys(changes).length) { msg.textContent = '変更はありません'; return; }
         btn.disabled = true;
         App.callServer('commitWeekBoard', [tasksState.week, { updates: [{ taskId: t.taskId, changes: changes }] }], function (res) {
-          tasksState.tasks = res.tasks;
+          tasksState.tasks = res.tasks; tasksState.loadedAt = res.loadedAt;
           renderTasks();
           var m = document.querySelector('.br-task[data-task-id="' + t.taskId + '"] .br-task-msg');
           if (m) m.textContent = '保存しました';
         }, function () { btn.disabled = false; });
       });
+      if (t.exception) {
+        var ex = mk('p', 'wk-exception br-task-exc', '例外情報：' + t.exception);
+        body.insertBefore(ex, body.firstChild);
+      }
       var foot = mk('div', 'br-task-foot'); foot.appendChild(btn); foot.appendChild(msg);
       body.appendChild(foot);
       box.appendChild(body);
@@ -173,12 +213,28 @@
       a.innerHTML = ''; b.innerHTML = '';
       todayTasks.forEach(function (t) { a.appendChild(taskRow(t)); });
       others.forEach(function (t) { b.appendChild(taskRow(t)); });
+      $('br-tasks-loaded-at').textContent = tasksState.loadedAt ? '正データ ' + tasksState.loadedAt + ' 時点' : '';
     }
     function loadTasks() {
       var week = mondayOf(state.date);
+      $('br-tasks-panel').hidden = false;
       App.callServer('getWeekBoard', [week], function (res) {
-        tasksState.week = res.targetWeek; tasksState.tasks = res.tasks;
+        tasksState.week = res.targetWeek; tasksState.tasks = res.tasks; tasksState.loadedAt = res.loadedAt;
+        $('br-tasks-stale').hidden = true;
         renderTasks();
+      }, function () {
+        var st = $('br-tasks-stale');
+        st.hidden = false;
+        if (tasksState.week === week && tasksState.loadedAt) {
+          st.textContent = '最新の読み込みに失敗しました。表示中は ' + tasksState.loadedAt + ' 時点の前回値です。';
+        } else {
+          // 別の週のタスクは表示しない
+          tasksState.week = week; tasksState.tasks = []; tasksState.loadedAt = '';
+          $('br-tasks-today').innerHTML = ''; $('br-tasks-other').innerHTML = '';
+          $('br-today-title').hidden = true; $('br-tasks-other-wrap').hidden = true; $('br-tasks-empty').hidden = true;
+          $('br-tasks-loaded-at').textContent = '';
+          st.textContent = 'この週のタスクを読み込めませんでした。';
+        }
       });
     }
 

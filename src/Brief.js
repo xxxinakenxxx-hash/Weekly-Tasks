@@ -17,7 +17,7 @@ function getMorningBrief(date) {
       if (row.date === d) brief = rowToBrief_(row);
     });
   }
-  return { date: d, today: currentDate_(), brief: brief };
+  return { date: d, today: currentDate_(), brief: brief, loadedAt: nowText_() };
 }
 
 /** 朝ブリーフを保存する。シートが無ければ作成する（既存シートは変更しない） */
