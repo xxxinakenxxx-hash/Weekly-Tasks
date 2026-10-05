@@ -52,8 +52,8 @@ function upgradeTasksHeader_(sheet) {
   if (last !== headers.length - 1) return;
   var actual = sheet.getRange(1, 1, 1, last).getValues()[0];
   if (actual.join('\t') !== headers.slice(0, -1).join('\t')) return;
+  // 見出しセル（14列目の1行目）だけを書く。既存セルの値・書式には触れない
   sheet.getRange(1, headers.length).setValue(headers[headers.length - 1]);
-  sheet.getRange(2, headers.length, sheet.getMaxRows() - 1, 1).setNumberFormat('@');
 }
 
 function assertHeader_(sheet, def) {
