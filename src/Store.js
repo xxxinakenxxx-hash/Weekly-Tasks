@@ -25,6 +25,7 @@ function setupSheets() {
     } else {
       if (def === SHEETS.TASKS) upgradeTasksHeader_(sheet);
       assertHeader_(sheet, def);
+      if (def === SHEETS.HISTORY) upgradeHistoryOps_(sheet);
     }
   });
   return { created: created, schema: checkSchema() };
@@ -44,16 +45,29 @@ function writeHeader_(sheet, def) {
   });
 }
 
-// IS-04：IS-00〜03 の13列の「タスク」シートに「持越し元タスクID」列を末尾追加する（既存の列・行は変更しない）
+// 既存の「タスク」シートに、後から追加した列の見出しを末尾に足す（既存の列・行は変更しない）
+// IS-04：13列→「持越し元タスクID」（14列目）、IS-06：14列→「削除済み」（15列目）
 function upgradeTasksHeader_(sheet) {
   var def = SHEETS.TASKS;
   var headers = headersOf_(def);
   var last = sheet.getLastColumn();
-  if (last !== headers.length - 1) return;
+  if (last < 13 || last >= headers.length) return;
   var actual = sheet.getRange(1, 1, 1, last).getValues()[0];
-  if (actual.join('\t') !== headers.slice(0, -1).join('\t')) return;
-  // 見出しセル（14列目の1行目）だけを書く。既存セルの値・書式には触れない
-  sheet.getRange(1, headers.length).setValue(headers[headers.length - 1]);
+  if (actual.join('\t') !== headers.slice(0, last).join('\t')) return;
+  // 足りない見出しセル（1行目）だけを書く。既存セルの値・書式には触れない
+  sheet.getRange(1, last + 1, 1, headers.length - last).setValues([headers.slice(last)]);
+}
+
+// IS-06：「履歴」シートの「操作」列の入力規則に「削除」が無ければ足す（規則の選択肢だけを更新。値・行は変更しない）
+function upgradeHistoryOps_(sheet) {
+  var col = SHEETS.HISTORY.columns.map(function (c) { return c.key; }).indexOf('op') + 1;
+  if (sheet.getMaxRows() < 2) return;
+  var rule = sheet.getRange(2, col).getDataValidation();
+  if (!rule) return;
+  var values = rule.getCriteriaValues()[0] || [];
+  if (values.indexOf('削除') >= 0) return;
+  sheet.getRange(2, col, sheet.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(HISTORY_OPS, true).setAllowInvalid(false).build());
 }
 
 function assertHeader_(sheet, def) {
@@ -123,10 +137,41 @@ function readAll_(sheet, def) {
     .map(function (row) { return rowToObj_(def, row); });
 }
 
-/** タスク一覧（対象週を指定すると絞り込み） */
+/** タスク一覧（対象週を指定すると絞り込み）。削除済みのタスクは含めない（IS-06） */
 function getTasks(targetWeek) {
-  var tasks = readAll_(tasksSheet_(), SHEETS.TASKS);
+  return getTasksIncludingDeleted_(targetWeek).filter(function (t) { return t.deleted !== true; });
+}
+
+// 削除済みも含めた全行（持越しの二重取り込み防止など、内部の照合だけで使う）
+function getTasksIncludingDeleted_(targetWeek) {
+  var tasks = readAll_(tasksSheet_(), SHEETS.TASKS).map(function (t) {
+    t.deleted = t.deleted === true || t.deleted === 'TRUE' ? true : '';
+    return t;
+  });
   return targetWeek ? tasks.filter(function (t) { return t.targetWeek === targetWeek; }) : tasks;
+}
+
+/**
+ * タスクを削除済みにする（IS-06）。行は消さず「削除済み」列に TRUE を入れ、履歴に「削除」を記録する。
+ * 対象週のタスクで、まだ削除済みでないものだけ。
+ */
+function markTaskDeleted_(targetWeek, taskId) {
+  var sheet = tasksSheet_();
+  var def = SHEETS.TASKS;
+  var last = sheet.getLastRow();
+  var ids = last < 2 ? [] : sheet.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return r[0]; });
+  var idx = ids.indexOf(taskId);
+  if (idx < 0) throw new Error('タスクが見つかりません：' + taskId);
+  var rowNo = idx + 2;
+  var current = rowToObj_(def, sheet.getRange(rowNo, 1, 1, def.columns.length).getValues()[0]);
+  if (current.targetWeek !== targetWeek) throw new Error('対象週のタスクではありません：' + taskId);
+  if (current.deleted === true || current.deleted === 'TRUE') throw new Error('すでに削除済みです：' + current.title);
+  var col = def.columns.map(function (c) { return c.key; }).indexOf('deleted') + 1;
+  sheet.getRange(rowNo, col).setValue(true);
+  var hs = historySheet_();
+  upgradeHistoryOps_(hs);
+  appendHistory_([{ taskId: taskId, op: '削除', field: '削除済み', before: '', after: 'TRUE' }]);
+  return current;
 }
 
 /** 履歴一覧（タスクIDを指定すると絞り込み） */
@@ -191,7 +236,8 @@ function prepareUpdate_(taskId, changes) {
   var idx = ids.indexOf(taskId);
   if (idx < 0) throw new Error('タスクが見つかりません：' + taskId);
   var rowNo = idx + 2;
-  var current = rowToObj_(def, sheet.getRange(rowNo, 1, 1, def.columns.length).getValues()[0]);
+  var current = normalizeTask_(rowToObj_(def, sheet.getRange(rowNo, 1, 1, def.columns.length).getValues()[0]));
+  if (current.deleted === true) throw new Error('削除済みのタスクは変更できません：' + current.title);
   var next = normalizeTask_(Object.assign({}, current, changes));
   validateTask_(next);
   return { rowNo: rowNo, current: current, next: next };
@@ -222,6 +268,8 @@ function normalizeTask_(t) {
   ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition', 'sourceTaskId'].forEach(function (k) {
     if (out[k] === undefined || out[k] === null) out[k] = '';
   });
+  // 削除済み：TRUE のときだけ true、それ以外は空欄（既存行の空欄と同じ扱いにし、余計な履歴を作らない）
+  out.deleted = out.deleted === true || out.deleted === 'TRUE' ? true : '';
   return out;
 }
 

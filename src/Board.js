@@ -98,6 +98,19 @@ function commitWeekBoard(targetWeek, payload) {
 }
 
 /**
+ * 保存済みタスクを削除済みにする（IS-06）。Sheetsの行は残し、「削除済み」列と履歴「削除」で記録する。
+ * 削除済みのタスクは、週間ボード・朝ブリーフの今週タスク・持越し候補・重複判定の対象外になる。
+ */
+function deleteTask(targetWeek, taskId) {
+  assertWeek_(targetWeek);
+  if (!taskId) throw new Error('タスクIDを指定してください。');
+  return withLock_(function () {
+    var t = markTaskDeleted_(targetWeek, taskId);
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), deletedTitle: t.title, loadedAt: nowText_() };
+  });
+}
+
+/**
  * 前週の「次週候補」「持越し」を対象週の候補として返す（保存はしない。確定は commitWeekBoard）。
  * すでに対象週へ取り込み済み（持越し元タスクIDが一致）またはタスク名が一致する行は除外し、名前を返す。
  */
@@ -105,7 +118,8 @@ function getCarryCandidates(targetWeek) {
   assertWeek_(targetWeek);
   var prevWeek = addDaysYmd_(targetWeek, -7);
   var current = getTasks(targetWeek);
-  var carriedIds = current.map(function (t) { return t.sourceTaskId; }).filter(function (x) { return x; });
+  // 取り込み済みの判定は削除済みの行も含める（削除した持越し行の元が、再び候補に出てこないようにする）
+  var carriedIds = getTasksIncludingDeleted_(targetWeek).map(function (t) { return t.sourceTaskId; }).filter(function (x) { return x; });
   var titles = current.map(function (t) { return String(t.title); });
   var candidates = [], excluded = [];
   getTasks(prevWeek).forEach(function (t) {
@@ -126,7 +140,7 @@ function checkCarrySources_(targetWeek, creates) {
   var withSource = creates.filter(function (c) { return c.sourceTaskId; });
   if (!withSource.length) return errors;
   var all = getTasks();
-  var used = getTasks(targetWeek).map(function (t) { return t.sourceTaskId; }).filter(function (x) { return x; });
+  var used = getTasksIncludingDeleted_(targetWeek).map(function (t) { return t.sourceTaskId; }).filter(function (x) { return x; });
   withSource.forEach(function (c) {
     var src = all.filter(function (t) { return t.taskId === c.sourceTaskId; })[0];
     if (!src) errors.push('持越し元タスクが見つかりません：' + c.sourceTaskId);

@@ -147,6 +147,20 @@
       }
       render();
     }
+    // 保存済みタスクの削除（IS-06）：確認のうえ、Sheetsの行は残して「削除済み」にし、履歴に「削除」を記録する。
+    // 他のタスクの未確定の変更・候補はそのまま残す
+    function deleteSaved(t) {
+      if (!window.confirm('「' + t.title + '」を削除します。\n週間タスク・朝ブリーフに表示されなくなります（Sheetsの行は残り、履歴に「削除」が記録されます）。')) return;
+      App.callServer('deleteTask', [state.week, t.key], function (res) {
+        state.saved = res.tasks;
+        delete state.edits[t.key];
+        showLoaded(res.loadedAt);
+        render();
+        var s = $('wk-saved');
+        s.textContent = '「' + res.deletedTitle + '」を削除しました（Sheetsの行は残し、削除済みにしました）。';
+        s.hidden = false;
+      });
+    }
     function removeCandidate(key) {
       state.candidates = state.candidates.filter(function (c) { return c.key !== key; });
       render();
@@ -179,13 +193,11 @@
       if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
       else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
       if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
-      if (t.isCandidate) {
-        // 候補の削除（既存の候補削除処理を使う。確定前なので正データには影響しない）
-        var del = el('button', 'wk-trash', '🗑');
-        del.type = 'button'; del.title = 'この候補を削除'; del.setAttribute('aria-label', '削除');
-        del.addEventListener('click', function () { removeCandidate(t.key); });
-        top.appendChild(del);
-      }
+      // ゴミ箱：候補は既存の候補削除（確定前なので正データは不変）、保存済みは「削除済み」にする（IS-06）
+      var del = el('button', 'wk-trash', '🗑');
+      del.type = 'button'; del.title = t.isCandidate ? 'この候補を削除' : 'このタスクを削除'; del.setAttribute('aria-label', '削除');
+      del.addEventListener('click', function () { if (t.isCandidate) removeCandidate(t.key); else deleteSaved(t); });
+      top.appendChild(del);
       c.appendChild(top);
 
       c.appendChild(el('p', 'wk-card-title', t.title));

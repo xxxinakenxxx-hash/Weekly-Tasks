@@ -5,7 +5,7 @@ var STATUS_VALUES = ['未着手', '進行中', '完了', '次週候補', '持越
 var KIND_VALUES = ['通常タスク', 'AI案件'];
 var DAY_VALUES = ['月', '火', '水', '木', '金'];
 var EXCEPTION_TYPES = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-var HISTORY_OPS = ['作成', '修正', '状態変更'];
+var HISTORY_OPS = ['作成', '修正', '状態変更', '削除'];
 
 var SHEETS = {
   TASKS: {
@@ -24,7 +24,9 @@ var SHEETS = {
       { key: 'handover', header: '次回申し送り' },
       { key: 'exception', header: '例外情報' },
       { key: 'aiPosition', header: 'AI案件現在地' },
-      { key: 'sourceTaskId', header: '持越し元タスクID', text: true }
+      { key: 'sourceTaskId', header: '持越し元タスクID', text: true },
+      // IS-06：削除済みの印（TRUE＝削除済み、空欄＝通常）。行は消さずに残す
+      { key: 'deleted', header: '削除済み' }
     ]
   },
   HISTORY: {

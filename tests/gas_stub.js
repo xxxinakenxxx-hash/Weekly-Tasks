@@ -26,7 +26,8 @@ function makeSheet(name) {
       setValues: v => { v.forEach((row, i) => row.forEach((x, j) => { ensure(r + i, c + j); s.data[r - 1 + i][c - 1 + j] = conv(x); })); },
       setValue: x => { ensure(r, c); s.data[r - 1][c - 1] = conv(x); },
       setNumberFormat: f => { s.formats[c] = f; },
-      setDataValidation: v => { s.validations[c] = v; }
+      setDataValidation: v => { s.validations[c] = v; },
+      getDataValidation: () => (s.validations[c] ? { getCriteriaValues: () => [s.validations[c].list, true] } : null)
     })
   };
   return s;
