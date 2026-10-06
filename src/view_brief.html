@@ -13,17 +13,25 @@
 <p id="br-empty" class="wk-muted" hidden>この日の朝ブリーフはまだ保存されていません。</p>
 <p id="br-preview-note" class="wk-note wk-excluded" hidden>読み込んだ朝ブリーフを表示しています。まだ保存されていません。</p>
 
+<!-- 上段（IS-06 是正）：開いた直後に「今日の予定」「今日やること」「重要な注意」が分かる -->
 <div id="br-body" hidden>
   <section class="wk-panel br-one-line">
     <h3>今日の一言</h3>
     <p id="br-oneLine"></p>
+    <p id="br-saved-at" class="wk-muted br-saved-at"></p>
   </section>
-  <section class="wk-panel"><h3>今日の流れ</h3><ul id="br-flow"></ul></section>
-  <section class="wk-panel"><h3>今日優先すること</h3><ul id="br-priorities"></ul></section>
-  <section class="wk-panel"><h3>気にかけておきたいこと</h3><ul id="br-concerns"></ul></section>
-  <section class="wk-panel"><h3>もう片づいていること</h3><ul id="br-done"></ul></section>
-  <section class="wk-panel"><h3>未完了・持越し</h3><ul id="br-carryover"></ul></section>
-  <p id="br-saved-at" class="wk-muted"></p>
+  <div class="br-top-grid">
+    <section class="wk-panel"><h3>今日の予定</h3><ul id="br-flow"></ul></section>
+    <section class="wk-panel br-todo"><h3>今日やること</h3><ul id="br-priorities"></ul></section>
+  </div>
+  <section class="wk-panel br-alert">
+    <h3>重要な注意</h3>
+    <ul id="br-concerns"></ul>
+    <details id="br-concerns-more-wrap" class="br-more">
+      <summary id="br-concerns-more-title">ほかの注意・要確認</summary>
+      <ul id="br-concerns-more"></ul>
+    </details>
+  </section>
 </div>
 
 <section class="wk-panel" id="br-tasks-panel">
@@ -39,6 +47,18 @@
   </details>
   <p id="br-tasks-loaded-at" class="wk-muted wk-loaded-at"></p>
 </section>
+
+<!-- 下段：未完了・持越し、片づいたことは折りたたむ -->
+<div id="br-body-more" hidden>
+  <details class="wk-panel br-more" id="br-carryover-wrap">
+    <summary id="br-carryover-title">未完了・持越し</summary>
+    <ul id="br-carryover"></ul>
+  </details>
+  <details class="wk-panel br-more" id="br-done-wrap">
+    <summary id="br-done-title">もう片づいていること</summary>
+    <ul id="br-done"></ul>
+  </details>
+</div>
 
 <details class="wk-panel" id="br-import">
   <summary>ChatGPT Project の朝ブリーフを読み込む</summary>

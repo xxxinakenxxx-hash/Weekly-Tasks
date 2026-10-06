@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -161,6 +161,8 @@
       s.value = current;
       return s;
     }
+    // 一覧カード（IS-06 是正）：一覧ではタスク名・状態・優先度・重点・例外の有無だけを見せ、
+    // 編集項目と詳細（現在地・例外の根拠・履歴など）は「詳細・編集」を開いたときに出す
     function card(t) {
       var c = el('div', 'wk-card' + (t.isCandidate ? ' is-candidate' : '') + (t.changed ? ' is-changed' : ''));
       c.setAttribute('data-key', t.key);
@@ -171,13 +173,48 @@
       if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
       c.appendChild(top);
 
+      c.appendChild(el('p', 'wk-card-title', t.title));
+      var meta = el('div', 'wk-card-meta');
+      meta.appendChild(el('span', 'wk-status-pill st-' + STATUS.indexOf(t.status), t.status));
+      meta.appendChild(el('span', 'wk-meta-item', t.priority === '' ? '優先度なし' : '優先' + t.priority));
+      if (t.focus === true) meta.appendChild(el('span', 'wk-focus-mark', '★重点'));
+      exceptionTypes(t.exception).forEach(function (x) { meta.appendChild(el('span', 'wk-exc-tag', x)); });
+      c.appendChild(meta);
+
+      if (t.isCandidate && needsConfirm(t)) {
+        var cl = el('label', 'wk-confirm' + (t.exceptionConfirmed ? ' is-done' : ''));
+        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.exceptionConfirmed === true;
+        cb.addEventListener('change', function () { setField(t, 'exceptionConfirmed', cb.checked); });
+        cl.appendChild(cb);
+        cl.appendChild(document.createTextNode(exceptionTypes(t.exception).filter(function (x) { return CONFIRM_REQUIRED.indexOf(x) >= 0; }).join('・') + 'の内容を確認した（根拠は「詳細・編集」で確認。チェックするまで保存できません）'));
+        c.appendChild(cl);
+      }
+      if (!t.isCandidate) c.appendChild(recordEditor(t));
+      c.appendChild(detailPanel(t));
+      if (t.isCandidate) {
+        var del = el('button', 'btn btn-small', '削除');
+        del.type = 'button';
+        del.addEventListener('click', function () { removeCandidate(t.key); });
+        c.appendChild(del);
+      }
+      return c;
+    }
+
+    // 詳細・編集（タスク名・曜日・状態・優先度・重点、AI案件現在地、例外の根拠、申し送り、変更履歴）
+    function detailPanel(t) {
+      var d = el('details', 'wk-detail');
+      d.open = !!state.openDetails[t.key];
+      d.addEventListener('toggle', function () { state.openDetails[t.key] = d.open; });
+      d.appendChild(el('summary', 'wk-detail-btn', '詳細・編集'));
+
       var title = el('input', 'wk-title');
       title.type = 'text'; title.value = t.title; title.setAttribute('aria-label', 'タスク名');
       title.addEventListener('change', function () {
         if (!title.value.trim()) { App.showError('タスク名は空にできません。'); title.value = t.title; return; }
         setField(t, 'title', title.value.trim());
       });
-      c.appendChild(title);
+      var tl = el('label', 'wk-record-field'); tl.appendChild(el('span', '', 'タスク名')); tl.appendChild(title);
+      d.appendChild(tl);
 
       var row = el('div', 'wk-fields');
       var day = select(DAYS, t.day, true, '曜日');
@@ -193,38 +230,20 @@
         setField(t, 'priority', v);
       });
       var focusLabel = el('label', 'wk-focus-label');
-      var focus = el('input'); focus.type = 'checkbox'; focus.checked = t.focus === true;
+      var focus = el('input'); focus.type = 'checkbox'; focus.checked = t.focus === true; focus.setAttribute('aria-label', '重点');
       focus.addEventListener('change', function () { setField(t, 'focus', focus.checked); });
       focusLabel.appendChild(focus); focusLabel.appendChild(document.createTextNode('重点'));
       [['曜日', day], ['状態', status], ['優先度', pri]].forEach(function (p) {
         var l = el('label', 'wk-field'); l.appendChild(el('span', '', p[0])); l.appendChild(p[1]); row.appendChild(l);
       });
       row.appendChild(focusLabel);
-      c.appendChild(row);
+      d.appendChild(row);
 
-      if (t.aiPosition) c.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
-      if (t.isCandidate) {
-        if (t.handover) c.appendChild(el('p', 'wk-handover', '前週の申し送り：' + t.handover));
-      } else {
-        c.appendChild(recordEditor(t));
-      }
-      if (t.exception) c.appendChild(exceptionBox(t.exception));
-      if (t.isCandidate && needsConfirm(t)) {
-        var cl = el('label', 'wk-confirm' + (t.exceptionConfirmed ? ' is-done' : ''));
-        var cb = el('input'); cb.type = 'checkbox'; cb.checked = t.exceptionConfirmed === true;
-        cb.addEventListener('change', function () { setField(t, 'exceptionConfirmed', cb.checked); });
-        cl.appendChild(cb);
-        cl.appendChild(document.createTextNode('上の' + exceptionTypes(t.exception).filter(function (x) { return CONFIRM_REQUIRED.indexOf(x) >= 0; }).join('・') + 'の内容を確認した（チェックするまで保存できません）'));
-        c.appendChild(cl);
-      }
-      if (!t.isCandidate) c.appendChild(historyViewer(t));
-      if (t.isCandidate) {
-        var del = el('button', 'btn btn-small', '削除');
-        del.type = 'button';
-        del.addEventListener('click', function () { removeCandidate(t.key); });
-        c.appendChild(del);
-      }
-      return c;
+      if (t.aiPosition) d.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
+      if (t.exception) d.appendChild(exceptionBox(t.exception));
+      if (t.isCandidate && t.handover) d.appendChild(el('p', 'wk-handover', '前週の申し送り：' + t.handover));
+      if (!t.isCandidate) d.appendChild(historyViewer(t));
+      return d;
     }
 
     // 実施結果・メモ・次回申し送り（保存済みタスクのみ）
@@ -233,7 +252,9 @@
       d.open = !!state.openRecords[t.key];
       d.addEventListener('toggle', function () { state.openRecords[t.key] = d.open; });
       var filled = RECORD_FIELDS.filter(function (f) { return t[f[0]]; }).length;
-      d.appendChild(el('summary', 'wk-record-btn', '実施結果・メモ・申し送りを書く' + (filled ? '（' + filled + '項目 記入済み）' : '')));
+      var sm = el('summary', 'wk-record-btn', '✎ 実施結果・メモ・申し送りを書く');
+      if (filled) sm.appendChild(el('span', 'wk-record-filled', filled + '項目 記入済み'));
+      d.appendChild(sm);
       RECORD_FIELDS.forEach(function (f) {
         var l = el('label', 'wk-record-field');
         l.appendChild(el('span', '', f[1]));
@@ -320,7 +341,10 @@
         col.setAttribute('data-day', d || '未配置');
         var items = tasks.filter(function (t) { return (t.day || '') === d; });
         col.appendChild(el('h4', 'wk-col-title', (d || '未配置') + '（' + items.length + '）'));
-        items.forEach(function (t) { col.appendChild(card(t)); });
+        var list = el('div', 'wk-col-cards');
+        items.forEach(function (t) { list.appendChild(card(t)); });
+        if (!items.length) list.appendChild(el('p', 'wk-muted wk-col-empty', 'なし'));
+        col.appendChild(list);
         board.appendChild(col);
       });
 

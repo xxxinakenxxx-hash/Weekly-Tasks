@@ -49,22 +49,42 @@
       return out;
     }
 
+    // 「気にかけておきたいこと」のうち、朝いちばんに見せる重要な注意（取得失敗・不一致・期限）。
+    // 要確認・チャット未確認・その他は「ほかの注意・要確認」に折りたたむ（表示の並べ替えのみ。内容は変えない）
+    function isImportant(text) {
+      var s = String(text);
+      return s.indexOf('取得失敗：') === 0 || s.indexOf('不一致：') === 0 || s.indexOf('期限') === 0;
+    }
+    function fillList(id, items) {
+      var ul = $(id); ul.innerHTML = '';
+      if (!items.length) {
+        var none = document.createElement('li'); none.className = 'wk-muted'; none.textContent = 'なし'; ul.appendChild(none);
+      }
+      items.forEach(function (x) { ul.appendChild(itemNode(x)); });
+    }
+
     function render(brief, isPreview) {
       $('br-date').textContent = state.date + '（' + weekday(state.date) + '）' + (state.date === state.today ? ' 今日' : '');
       $('br-loading').hidden = true;
       $('br-empty').hidden = !!brief;
       $('br-body').hidden = !brief;
+      $('br-body-more').hidden = !brief;
       $('br-preview-note').hidden = !isPreview;
       $('br-save-bar').hidden = !isPreview;
       if (!brief) return;
       $('br-oneLine').textContent = brief.oneLine;
-      SECTIONS.forEach(function (s) {
-        var ul = $('br-' + s[1]); ul.innerHTML = '';
-        if (!brief[s[1]].length) {
-          var none = document.createElement('li'); none.className = 'wk-muted'; none.textContent = 'なし'; ul.appendChild(none);
-        }
-        brief[s[1]].forEach(function (x) { ul.appendChild(itemNode(x)); });
-      });
+      fillList('br-flow', brief.flow);
+      fillList('br-priorities', brief.priorities);
+      var important = brief.concerns.filter(isImportant);
+      var others = brief.concerns.filter(function (x) { return !isImportant(x); });
+      fillList('br-concerns', important);
+      fillList('br-concerns-more', others);
+      $('br-concerns-more-wrap').hidden = !others.length;
+      $('br-concerns-more-title').textContent = 'ほかの注意・要確認（' + others.length + '件）';
+      fillList('br-carryover', brief.carryover);
+      $('br-carryover-title').textContent = '未完了・持越し（' + brief.carryover.length + '件）';
+      fillList('br-done', brief.done);
+      $('br-done-title').textContent = 'もう片づいていること（' + brief.done.length + '件）';
       $('br-saved-at').textContent = isPreview ? '' : '保存日時：' + brief.savedAt;
     }
 
@@ -88,7 +108,7 @@
         } else {
           state.date = date; state.shown = null;
           $('br-date').textContent = date + '（' + weekday(date) + '）' + (date === state.today ? ' 今日' : '');
-          $('br-body').hidden = true; $('br-empty').hidden = true;
+          $('br-body').hidden = true; $('br-body-more').hidden = true; $('br-empty').hidden = true;
           tasksState.tasks = []; tasksState.loadedAt = '';
           $('br-tasks-panel').hidden = true;
           st.textContent = 'この日の朝ブリーフを読み込めませんでした。「今日」または日付の移動ボタンを押して取り直してください。';
