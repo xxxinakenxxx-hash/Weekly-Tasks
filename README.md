@@ -8,7 +8,7 @@ CLAUDE.md               Claude Code向けの恒久ルール
 README.md               このファイル
 tasks/TASK_CURRENT.md   工程管理（現在工程）
 docs/official/          正本（統合企画書・案件概要書・機能仕様書・データ設計書 v1.7）
-docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1、追加実装指示書 v1.2。v1.1 も残置）
+docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1、追加実装指示書 v1.2）
 docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」15列＝IS-04で「持越し元タスクID」、IS-06で「削除済み」を追加、「履歴」6列、「朝ブリーフ」8列）
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式

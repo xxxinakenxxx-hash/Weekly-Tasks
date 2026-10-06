@@ -1,6 +1,6 @@
 # AI案件_日次現在地.md の書式（追加実装 v1.1）
 
-根拠：docs/implementation/追加実装指示書_複数日配置・日次AI現在地連携_v1.1.md §3.2・§5・§8。
+根拠：docs/implementation/追加実装指示書_複数日配置・日次AI現在地連携・手動タスク追加_v1.2.md §3.2・§5・§8。
 
 ## 位置づけ
 - Desktop版Workが毎朝の「日次AI現在地巡回」で作る。朝ブリーフJSON（docs/BRIEF_FORMAT.md）を作る材料としてだけ使う。
