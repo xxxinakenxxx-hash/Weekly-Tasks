@@ -22,6 +22,56 @@
       return li;
     }
 
+    // ---- 朝に読む形への圧縮（IS-06 是正）：表示だけを短くし、元の文は開けば全文読める ----
+    var HEAD_MAX = 34;
+    function mk2(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+    function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n) + '…' : s; }
+    // 見出し（短い）と全文を、開閉できる1行にする。全文が見出しと同じなら開閉にしない
+    function foldItem(li, headNodes, full, shortText) {
+      if (!full || full === shortText) { headNodes.forEach(function (n) { li.appendChild(n); }); return li; }
+      var d = mk2('details', 'br-fold');
+      var sm = mk2('summary');
+      headNodes.forEach(function (n) { sm.appendChild(n); });
+      d.appendChild(sm);
+      d.appendChild(mk2('p', 'br-fold-body', full));
+      li.appendChild(d);
+      return li;
+    }
+    // 今日やること：「タスク名（補足）」の補足から 状態・優先度・重点 の値を除き、タスク名＋短い補足で見せる
+    function todoNode(text) {
+      var s = String(text), li = mk2('li');
+      var i = s.search(/[（(]/);
+      var head = i > 0 ? s.slice(0, i) : s;
+      var note = i > 0 ? s.slice(i + 1).replace(/[）)]\s*$/, '') : '';
+      note = note.replace(/状態：[^／。、，,）)]*[／。、，,]?/g, '')
+        .replace(/優先度\s*\d+[／。、，,]?/g, '')
+        .replace(/重点\s*(TRUE|FALSE|true|false)[／。、，,]?/g, '')
+        .replace(/^[／。、，,\s]+|[／。、，,\s]+$/g, '');
+      var nodes = [mk2('span', 'br-head', head)];
+      if (note) nodes.push(mk2('span', 'br-note', clip(note, HEAD_MAX)));
+      return foldItem(li, nodes, note.length > HEAD_MAX ? s : '', s);
+    }
+    // 注意：区分の目印＋対象（「区分：対象／詳細」の対象部分）だけを見せ、詳細は開いて読む
+    function concernNode(text) {
+      var s = String(text), li = mk2('li');
+      var m = EXCEPTIONS.filter(function (e) { return s.indexOf(e + '：') === 0; })[0];
+      var body = m ? s.slice(m.length + 1) : s;
+      var j = body.indexOf('／');
+      var head = j > 0 ? body.slice(0, j) : clip(body, HEAD_MAX);
+      var nodes = [];
+      if (m) {
+        li.className = 'br-exc';
+        nodes.push(mk2('span', 'wk-exc-tag', m));
+      }
+      nodes.push(mk2('span', 'br-head', head));
+      return foldItem(li, nodes, head === body ? '' : body, head);
+    }
+
     function $(id) { return document.getElementById(id); }
     function addDays(ymd, n) {
       var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
@@ -55,12 +105,12 @@
       var s = String(text);
       return s.indexOf('取得失敗：') === 0 || s.indexOf('不一致：') === 0 || s.indexOf('期限') === 0;
     }
-    function fillList(id, items) {
+    function fillList(id, items, toNode) {
       var ul = $(id); ul.innerHTML = '';
       if (!items.length) {
         var none = document.createElement('li'); none.className = 'wk-muted'; none.textContent = 'なし'; ul.appendChild(none);
       }
-      items.forEach(function (x) { ul.appendChild(itemNode(x)); });
+      items.forEach(function (x) { ul.appendChild((toNode || itemNode)(x)); });
     }
 
     function render(brief, isPreview) {
@@ -74,11 +124,11 @@
       if (!brief) return;
       $('br-oneLine').textContent = brief.oneLine;
       fillList('br-flow', brief.flow);
-      fillList('br-priorities', brief.priorities);
+      fillList('br-priorities', brief.priorities, todoNode);
       var important = brief.concerns.filter(isImportant);
       var others = brief.concerns.filter(function (x) { return !isImportant(x); });
-      fillList('br-concerns', important);
-      fillList('br-concerns-more', others);
+      fillList('br-concerns', important, concernNode);
+      fillList('br-concerns-more', others, concernNode);
       $('br-concerns-more-wrap').hidden = !others.length;
       $('br-concerns-more-title').textContent = 'ほかの注意・要確認（' + others.length + '件）';
       fillList('br-carryover', brief.carryover);

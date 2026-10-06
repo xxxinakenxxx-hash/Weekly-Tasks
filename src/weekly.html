@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, dragKey: null, loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -161,6 +161,14 @@
       s.value = current;
       return s;
     }
+    // 一覧カードに出す「現在地」：既存の「AI案件現在地」の最初の一文だけ（先頭の「現在工程：」は省く）。
+    // 現在地のデータが無いタスクには何も出さない（推測で作らない）。全文は「詳細・編集」で見る
+    function shortPosition(text) {
+      var s = String(text || '').replace(/^現在工程：/, '');
+      var i = s.indexOf('。');
+      return i >= 0 ? s.slice(0, i) : s;
+    }
+
     // 一覧カード（IS-06 是正）：一覧ではタスク名・状態・優先度・重点・例外の有無だけを見せ、
     // 編集項目と詳細（現在地・例外の根拠・履歴など）は「詳細・編集」を開いたときに出す
     function card(t) {
@@ -171,9 +179,21 @@
       if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
       else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
       if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
+      if (t.isCandidate) {
+        // 候補の削除（既存の候補削除処理を使う。確定前なので正データには影響しない）
+        var del = el('button', 'wk-trash', '🗑');
+        del.type = 'button'; del.title = 'この候補を削除'; del.setAttribute('aria-label', '削除');
+        del.addEventListener('click', function () { removeCandidate(t.key); });
+        top.appendChild(del);
+      }
       c.appendChild(top);
 
       c.appendChild(el('p', 'wk-card-title', t.title));
+      if (t.aiPosition) {
+        var pos = el('p', 'wk-card-pos', '現在地：' + shortPosition(t.aiPosition));
+        pos.title = t.aiPosition;
+        c.appendChild(pos);
+      }
       var meta = el('div', 'wk-card-meta');
       meta.appendChild(el('span', 'wk-status-pill st-' + STATUS.indexOf(t.status), t.status));
       meta.appendChild(el('span', 'wk-meta-item', t.priority === '' ? '優先度なし' : '優先' + t.priority));
@@ -191,12 +211,7 @@
       }
       if (!t.isCandidate) c.appendChild(recordEditor(t));
       c.appendChild(detailPanel(t));
-      if (t.isCandidate) {
-        var del = el('button', 'btn btn-small', '削除');
-        del.type = 'button';
-        del.addEventListener('click', function () { removeCandidate(t.key); });
-        c.appendChild(del);
-      }
+      makeDraggable(c, t);
       return c;
     }
 
@@ -312,6 +327,47 @@
       return d;
     }
 
+    // ---- ドラッグ＆ドロップで曜日を変える（PC）----
+    // 落とした時点では曜日の変更を「未確定の変更」に加えるだけ。保存は「確定して保存」（既存の流れと同じ）
+    function makeDraggable(c, t) {
+      c.draggable = true;
+      // 入力欄・ボタンの上では、文字選択や操作を優先してドラッグしない
+      c.addEventListener('mousedown', function (e) {
+        c.draggable = !e.target.closest('input, textarea, select, button, summary, label');
+      });
+      c.addEventListener('dragstart', function (e) {
+        state.dragKey = t.key;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', t.key);
+        c.classList.add('is-dragging');
+      });
+      c.addEventListener('dragend', function () {
+        state.dragKey = null;
+        c.classList.remove('is-dragging');
+        var cols = document.querySelectorAll('.wk-col.is-drop');
+        for (var i = 0; i < cols.length; i++) cols[i].classList.remove('is-drop');
+      });
+    }
+    function makeDropTarget(col, day) {
+      col.addEventListener('dragover', function (e) {
+        if (!state.dragKey) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        col.classList.add('is-drop');
+      });
+      col.addEventListener('dragleave', function (e) {
+        if (!col.contains(e.relatedTarget)) col.classList.remove('is-drop');
+      });
+      col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        col.classList.remove('is-drop');
+        var key = state.dragKey || e.dataTransfer.getData('text/plain');
+        state.dragKey = null;
+        var t = allTasks().filter(function (x) { return x.key === key; })[0];
+        if (t && (t.day || '') !== day) setField(t, 'day', day);
+      });
+    }
+
     function render() {
       $('wk-week').textContent = state.week + '（月）〜' + addDays(state.week, 4) + '（金）';
       var tasks = allTasks();
@@ -343,8 +399,9 @@
         col.appendChild(el('h4', 'wk-col-title', (d || '未配置') + '（' + items.length + '）'));
         var list = el('div', 'wk-col-cards');
         items.forEach(function (t) { list.appendChild(card(t)); });
-        if (!items.length) list.appendChild(el('p', 'wk-muted wk-col-empty', 'なし'));
+        if (!items.length) list.appendChild(el('p', 'wk-muted wk-col-empty', d ? 'なし（ここへドラッグして配置）' : 'なし'));
         col.appendChild(list);
+        makeDropTarget(col, d);
         board.appendChild(col);
       });
 
