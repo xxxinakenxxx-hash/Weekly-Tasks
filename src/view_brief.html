@@ -34,6 +34,14 @@
   </section>
 </div>
 
+<!-- 読み込んだ朝ブリーフのAI案件現在地（保存前の確認用。追加実装 v1.1） -->
+<section class="wk-panel" id="br-ai" hidden>
+  <h3>AI案件の現在地（今回の日次巡回）</h3>
+  <p class="wk-muted br-tasks-note">「確認済み」だけが、保存時にtaskIdの一致する今週のタスクの現在地へ反映されます。それ以外は前回の確認済み現在地のままです。</p>
+  <ul id="br-ai-list"></ul>
+</section>
+<p id="br-ai-sync" class="wk-note wk-excluded" role="status" hidden></p>
+
 <section class="wk-panel" id="br-tasks-panel">
   <h3 id="br-tasks-title">今週のタスク</h3>
   <p class="wk-muted br-tasks-note">タスク名を押すと、そのタスクの入力欄が開きます。保存すると週間タスク画面にも反映されます。</p>

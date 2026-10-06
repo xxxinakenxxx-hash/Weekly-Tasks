@@ -4,6 +4,19 @@
 var STATUS_VALUES = ['未着手', '進行中', '完了', '次週候補', '持越し'];
 var KIND_VALUES = ['通常タスク', 'AI案件'];
 var DAY_VALUES = ['月', '火', '水', '木', '金'];
+// 追加実装 v1.1：1タスクに複数曜日。保存形式は月→金の固定順を「,」でつないだ文字列（例：月,火,水）。重複なし。空欄＝未配置
+var DAY_SEPARATOR = ',';
+// 「曜日」列の入力規則に使う、保存できる値の一覧（月〜金の空でない組み合わせ31通り。単一曜日の既存値も含む）
+var DAY_COMBOS = (function () {
+  var out = [];
+  for (var m = 1; m < 32; m++) {
+    out.push(DAY_VALUES.filter(function (d, i) { return m & (1 << i); }).join(DAY_SEPARATOR));
+  }
+  return out.sort(function (a, b) { return a.split(DAY_SEPARATOR).length - b.split(DAY_SEPARATOR).length || dayKey_(a) - dayKey_(b); });
+  function dayKey_(s) { return s.split(DAY_SEPARATOR).reduce(function (n, d) { return n * 10 + DAY_VALUES.indexOf(d) + 1; }, 0); }
+})();
+// 朝ブリーフJSONの「AI案件現在地」の取得結果（追加実装 v1.1）。「確認済み」だけをAI案件現在地へ同期する
+var AI_RESULT_VALUES = ['確認済み', '要確認', '不一致', '取得失敗', 'チャット未確認'];
 var EXCEPTION_TYPES = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
 var HISTORY_OPS = ['作成', '修正', '状態変更', '削除'];
 
@@ -15,7 +28,7 @@ var SHEETS = {
       { key: 'targetWeek', header: '対象週', text: true, dateFormat: 'yyyy-MM-dd' },
       { key: 'title', header: 'タスク名／案件名' },
       { key: 'kind', header: '種別', values: KIND_VALUES },
-      { key: 'day', header: '曜日', values: DAY_VALUES },
+      { key: 'day', header: '曜日', values: DAY_COMBOS },
       { key: 'status', header: '状態', values: STATUS_VALUES },
       { key: 'priority', header: '優先度' },
       { key: 'focus', header: '重点' },

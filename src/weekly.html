@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, dragKey: null, loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, dragKey: null, dragFrom: '', loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -19,6 +19,27 @@
     function addDays(ymd, n) {
       var p = ymd.split('-').map(Number), d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
       return d.toISOString().slice(0, 10);
+    }
+
+    // ---- 曜日（追加実装 v1.1）：1タスクに複数曜日。保存形式は月→金の固定順を「,」でつないだ文字列。空欄＝未配置 ----
+    function daysOf(v) {
+      var s = String(v || '');
+      return s ? s.split(',') : [];
+    }
+    function joinDays(arr) {
+      return DAYS.filter(function (d) { return arr.indexOf(d) >= 0; }).join(',');
+    }
+    // 週間タスクJSONの「曜日」：文字列（"木"、"月,火"）または配列（["月","火"]）。月〜金以外はエラー
+    function parseDays(v) {
+      var parts = Array.isArray(v) ? v : String(v || '').split(/[,、・\s]+/);
+      var out = [];
+      for (var i = 0; i < parts.length; i++) {
+        var p = String(parts[i]).trim();
+        if (!p) continue;
+        if (DAYS.indexOf(p) < 0) return null;
+        if (out.indexOf(p) < 0) out.push(p);
+      }
+      return joinDays(out);
     }
 
     // ---- 例外情報（IS-05）：「区分：内容」を「／」区切りで複数持てる ----
@@ -66,7 +87,7 @@
         if (!t || typeof t !== 'object') { errors.push(n + '形式が不正です。'); return; }
         if (!t['タスク名']) errors.push(n + '「タスク名」は必須です。');
         if (KINDS.indexOf(t['種別']) < 0) errors.push(n + '「種別」は ' + KINDS.join('／') + ' のいずれかです。');
-        if (t['曜日'] && DAYS.indexOf(t['曜日']) < 0) errors.push(n + '「曜日」は 月〜金 または空欄です。');
+        if (t['曜日'] !== undefined && t['曜日'] !== '' && parseDays(t['曜日']) === null) errors.push(n + '「曜日」は 月〜金（複数可）または空欄です。');
         if (t['優先度'] !== undefined && t['優先度'] !== '' && !(Number(t['優先度']) >= 1 && Number(t['優先度']) % 1 === 0)) errors.push(n + '「優先度」は1以上の整数です。');
         if (t['重点'] !== undefined && typeof t['重点'] !== 'boolean') errors.push(n + '「重点」は true／false です。');
         if (t['例外情報'] && !EXCEPTIONS.some(function (e) { return String(t['例外情報']).indexOf(e + '：') === 0; })) {
@@ -98,7 +119,7 @@
       showExcluded(excluded);
       state.candidates = proposals.map(function (t) {
         return {
-          key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: t['曜日'] || '',
+          key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: parseDays(t['曜日']) || '',
           priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
           status: '未着手', exception: t['例外情報'] || '', aiPosition: t['AI案件現在地'] || ''
         };
@@ -194,7 +215,7 @@
 
     // 一覧カード（IS-06 是正）：一覧ではタスク名・状態・優先度・重点・例外の有無だけを見せ、
     // 編集項目と詳細（現在地・例外の根拠・履歴など）は「詳細・編集」を開いたときに出す
-    function card(t) {
+    function card(t, colDay) {
       var c = el('div', 'wk-card' + (t.isCandidate ? ' is-candidate' : '') + (t.changed ? ' is-changed' : ''));
       c.setAttribute('data-key', t.key);
       var top = el('div', 'wk-card-top');
@@ -202,6 +223,7 @@
       if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
       else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
       if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
+      if (daysOf(t.day).length > 1) top.appendChild(el('span', 'wk-badge is-multi', daysOf(t.day).join('・')));
       // ゴミ箱：候補は既存の候補削除（確定前なので正データは不変）、保存済みは「削除済み」にする（IS-06）
       var del = el('button', 'wk-trash', '🗑');
       del.type = 'button'; del.title = t.isCandidate ? 'この候補を削除' : 'このタスクを削除'; del.setAttribute('aria-label', '削除');
@@ -232,7 +254,7 @@
       }
       if (!t.isCandidate) c.appendChild(recordEditor(t));
       c.appendChild(detailPanel(t));
-      makeDraggable(c, t);
+      makeDraggable(c, t, colDay);
       return c;
     }
 
@@ -252,9 +274,27 @@
       var tl = el('label', 'wk-record-field'); tl.appendChild(el('span', '', 'タスク名')); tl.appendChild(title);
       d.appendChild(tl);
 
+      // 曜日：月〜金を複数選択して追加・解除（PC・スマホ共通）。すべて外すと未配置
+      var dayBox = el('div', 'wk-days');
+      dayBox.setAttribute('role', 'group');
+      dayBox.setAttribute('aria-label', '曜日');
+      dayBox.appendChild(el('span', 'wk-days-label', '曜日（複数可）'));
+      var cur = daysOf(t.day);
+      DAYS.forEach(function (dname) {
+        var l = el('label', 'wk-day-check');
+        var cb = el('input'); cb.type = 'checkbox'; cb.value = dname; cb.checked = cur.indexOf(dname) >= 0;
+        cb.setAttribute('aria-label', '曜日 ' + dname);
+        cb.addEventListener('change', function () {
+          var next = daysOf(t.day).filter(function (x) { return x !== dname; });
+          if (cb.checked) next.push(dname);
+          setField(t, 'day', joinDays(next));
+        });
+        l.appendChild(cb); l.appendChild(document.createTextNode(dname));
+        dayBox.appendChild(l);
+      });
+      d.appendChild(dayBox);
+
       var row = el('div', 'wk-fields');
-      var day = select(DAYS, t.day, true, '曜日');
-      day.addEventListener('change', function () { setField(t, 'day', day.value); });
       var status = select(STATUS, t.status, false, '状態');
       status.className = 'wk-status';
       status.addEventListener('change', function () { setField(t, 'status', status.value); });
@@ -269,7 +309,7 @@
       var focus = el('input'); focus.type = 'checkbox'; focus.checked = t.focus === true; focus.setAttribute('aria-label', '重点');
       focus.addEventListener('change', function () { setField(t, 'focus', focus.checked); });
       focusLabel.appendChild(focus); focusLabel.appendChild(document.createTextNode('重点'));
-      [['曜日', day], ['状態', status], ['優先度', pri]].forEach(function (p) {
+      [['状態', status], ['優先度', pri]].forEach(function (p) {
         var l = el('label', 'wk-field'); l.appendChild(el('span', '', p[0])); l.appendChild(p[1]); row.appendChild(l);
       });
       row.appendChild(focusLabel);
@@ -350,7 +390,7 @@
 
     // ---- ドラッグ＆ドロップで曜日を変える（PC）----
     // 落とした時点では曜日の変更を「未確定の変更」に加えるだけ。保存は「確定して保存」（既存の流れと同じ）
-    function makeDraggable(c, t) {
+    function makeDraggable(c, t, colDay) {
       c.draggable = true;
       // 入力欄・ボタンの上では、文字選択や操作を優先してドラッグしない
       c.addEventListener('mousedown', function (e) {
@@ -358,6 +398,7 @@
       });
       c.addEventListener('dragstart', function (e) {
         state.dragKey = t.key;
+        state.dragFrom = colDay || '';
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', t.key);
         c.classList.add('is-dragging');
@@ -383,9 +424,15 @@
         e.preventDefault();
         col.classList.remove('is-drop');
         var key = state.dragKey || e.dataTransfer.getData('text/plain');
-        state.dragKey = null;
+        var from = state.dragFrom || '';
+        state.dragKey = null; state.dragFrom = '';
         var t = allTasks().filter(function (x) { return x.key === key; })[0];
-        if (t && (t.day || '') !== day) setField(t, 'day', day);
+        if (!t || from === day) return;
+        // 曜日の「移動」：つかんだ段の曜日を外し、落とした段の曜日を加える（他の曜日はそのまま）。未配置へ落とすと、つかんだ曜日だけを外す
+        var next = daysOf(t.day).filter(function (x) { return x !== from; });
+        if (day) next.push(day);
+        var v = joinDays(next);
+        if (v !== (t.day || '')) setField(t, 'day', v);
       });
     }
 
@@ -416,10 +463,10 @@
       DAYS.concat(['']).forEach(function (d) {
         var col = el('section', 'wk-col');
         col.setAttribute('data-day', d || '未配置');
-        var items = tasks.filter(function (t) { return (t.day || '') === d; });
+        var items = tasks.filter(function (t) { return d ? daysOf(t.day).indexOf(d) >= 0 : !daysOf(t.day).length; });
         col.appendChild(el('h4', 'wk-col-title', (d || '未配置') + '（' + items.length + '）'));
         var list = el('div', 'wk-col-cards');
-        items.forEach(function (t) { list.appendChild(card(t)); });
+        items.forEach(function (t) { list.appendChild(card(t, d)); });
         if (!items.length) list.appendChild(el('p', 'wk-muted wk-col-empty', d ? 'なし（ここへドラッグして配置）' : 'なし'));
         col.appendChild(list);
         makeDropTarget(col, d);

@@ -25,6 +25,7 @@ function setupSheets() {
     } else {
       if (def === SHEETS.TASKS) upgradeTasksHeader_(sheet);
       assertHeader_(sheet, def);
+      if (def === SHEETS.TASKS) upgradeDayValidation_(sheet);
       if (def === SHEETS.HISTORY) upgradeHistoryOps_(sheet);
     }
   });
@@ -56,6 +57,42 @@ function upgradeTasksHeader_(sheet) {
   if (actual.join('\t') !== headers.slice(0, last).join('\t')) return;
   // 足りない見出しセル（1行目）だけを書く。既存セルの値・書式には触れない
   sheet.getRange(1, last + 1, 1, headers.length - last).setValues([headers.slice(last)]);
+}
+
+// 追加実装 v1.1：「タスク」シートの「曜日」列の入力規則を、複数曜日の値を保存できる一覧に更新する（規則の選択肢だけを更新。値・行は変更しない）
+function upgradeDayValidation_(sheet) {
+  var col = SHEETS.TASKS.columns.map(function (c) { return c.key; }).indexOf('day') + 1;
+  if (sheet.getMaxRows() < 2) return;
+  var rule = sheet.getRange(2, col).getDataValidation();
+  if (!rule) return;
+  var values = rule.getCriteriaValues()[0] || [];
+  if (values.indexOf('月' + DAY_SEPARATOR + '火') >= 0) return;
+  sheet.getRange(2, col, sheet.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(DAY_COMBOS, true).setAllowInvalid(false).build());
+}
+
+/**
+ * 曜日の正規化（追加実装 v1.1）：配列・「,」「、」「・」区切りの文字列を受け取り、月→金の固定順・重複なしの文字列にする。
+ * 月〜金以外の値はそのまま残し、検証でエラーにする（推測で捨てない）。
+ */
+function normalizeDays_(v) {
+  if (v === undefined || v === null) return '';
+  var parts = Array.isArray(v) ? v : String(v).split(/[,、・\s]+/);
+  var seen = {}, valid = [], bad = [];
+  parts.forEach(function (p) {
+    p = String(p).trim();
+    if (!p || seen[p]) return;
+    seen[p] = true;
+    if (DAY_VALUES.indexOf(p) >= 0) valid.push(p); else bad.push(p);
+  });
+  valid.sort(function (a, b) { return DAY_VALUES.indexOf(a) - DAY_VALUES.indexOf(b); });
+  return valid.concat(bad).join(DAY_SEPARATOR);
+}
+
+/** 曜日の値（保存形式）を配列にする。空欄＝[]（未配置） */
+function daysOf_(v) {
+  var s = String(v || '');
+  return s ? s.split(DAY_SEPARATOR) : [];
 }
 
 // IS-06：「履歴」シートの「操作」列の入力規則に「削除」が無ければ足す（規則の選択肢だけを更新。値・行は変更しない）
@@ -193,7 +230,9 @@ function updateTask(taskId, changes) {
 // 作成の本体（ロックは呼び出し側で取得する）
 function createTask_(input) {
   var task = prepareCreate_(input);
-  appendObj_(tasksSheet_(), SHEETS.TASKS, task);
+  var sheet = tasksSheet_();
+  if (task.day.indexOf(DAY_SEPARATOR) >= 0) upgradeDayValidation_(sheet);
+  appendObj_(sheet, SHEETS.TASKS, task);
   appendHistory_([{ taskId: task.taskId, op: '作成', field: '', before: '', after: '' }]);
   return task;
 }
@@ -210,6 +249,7 @@ function prepareCreate_(input) {
 function updateTask_(taskId, changes) {
   var plan = prepareUpdate_(taskId, changes);
   var sheet = tasksSheet_();
+  if (String(plan.next.day).indexOf(DAY_SEPARATOR) >= 0 && plan.next.day !== plan.current.day) upgradeDayValidation_(sheet);
   var history = [];
   SHEETS.TASKS.columns.forEach(function (c, i) {
     if (String(plan.current[c.key]) === String(plan.next[c.key])) return;
@@ -268,6 +308,7 @@ function normalizeTask_(t) {
   ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition', 'sourceTaskId'].forEach(function (k) {
     if (out[k] === undefined || out[k] === null) out[k] = '';
   });
+  out.day = normalizeDays_(out.day);
   // 削除済み：TRUE のときだけ true、それ以外は空欄（既存行の空欄と同じ扱いにし、余計な履歴を作らない）
   out.deleted = out.deleted === true || out.deleted === 'TRUE' ? true : '';
   return out;
@@ -280,7 +321,7 @@ function validateTask_(t) {
     errors.push('対象週はその週の月曜日を yyyy-MM-dd で指定してください：' + t.targetWeek);
   }
   if (KIND_VALUES.indexOf(t.kind) < 0) errors.push('種別が不正です：' + t.kind);
-  if (t.day !== '' && DAY_VALUES.indexOf(t.day) < 0) errors.push('曜日が不正です：' + t.day);
+  if (t.day !== '' && DAY_COMBOS.indexOf(t.day) < 0) errors.push('曜日は月〜金（複数可、重複なし）で指定してください：' + t.day);
   if (STATUS_VALUES.indexOf(t.status) < 0) errors.push('状態が不正です：' + t.status);
   if (t.priority !== '' && !(Number(t.priority) >= 1 && Number(t.priority) % 1 === 0)) {
     errors.push('優先度は1以上の整数で指定してください：' + t.priority);
