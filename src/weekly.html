@@ -369,7 +369,9 @@
           if (!res.history.length) box.appendChild(el('p', 'wk-muted', '履歴はありません。'));
           var ul = el('ul', 'wk-history-list');
           res.history.forEach(function (h) {
-            var txt = h.at + '　' + h.op + (h.field ? '　' + h.field + '：' + (h.before === '' ? '（空欄）' : h.before) + ' → ' + (h.after === '' ? '（空欄）' : h.after) : '');
+            // 手動追加（v1.2）は「作成（手動追加）」と表示する
+            var txt = h.op === '作成' && h.field === '手動追加' ? h.at + '　作成（手動追加）' :
+              h.at + '　' + h.op + (h.field ? '　' + h.field + '：' + (h.before === '' ? '（空欄）' : h.before) + ' → ' + (h.after === '' ? '（空欄）' : h.after) : '');
             ul.appendChild(el('li', '', txt));
           });
           box.appendChild(ul);
@@ -583,6 +585,78 @@
         render();
       });
     }
+
+    // ---- 手動タスク追加（追加実装 v1.2）：AI／Workで拾えないタスクを確定タスクとして直接追加する ----
+    function buildAddDays() {
+      var box = $('wk-add-days');
+      DAYS.forEach(function (dname) {
+        var l = el('label', 'wk-day-check');
+        var cb = el('input'); cb.type = 'checkbox'; cb.value = dname; cb.setAttribute('aria-label', '追加 曜日 ' + dname);
+        l.appendChild(cb); l.appendChild(document.createTextNode(dname));
+        box.appendChild(l);
+      });
+      var kind = $('wk-add-kind');
+      KINDS.forEach(function (k) { var o = el('option', '', k); o.value = k; kind.appendChild(o); });
+      kind.addEventListener('change', syncAddKind);
+    }
+    // AI案件現在地は、種別がAI案件のときだけ入力できる
+    function syncAddKind() {
+      var ai = $('wk-add-kind').value === 'AI案件';
+      $('wk-add-ai-field').hidden = !ai;
+      if (!ai) $('wk-add-ai').value = '';
+    }
+    function resetAdd() {
+      $('wk-add-title').value = '';
+      $('wk-add-kind').value = KINDS[0];
+      var cbs = $('wk-add-days').querySelectorAll('input');
+      for (var i = 0; i < cbs.length; i++) cbs[i].checked = false;
+      $('wk-add-priority').value = '';
+      $('wk-add-focus').checked = false;
+      $('wk-add-memo').value = '';
+      $('wk-add-ai').value = '';
+      syncAddKind();
+    }
+    function openAdd() {
+      if (!$('wk-add').hidden) { $('wk-add-title').focus(); return; }
+      resetAdd();
+      $('wk-add').hidden = false;
+      $('wk-add-title').focus();
+    }
+    function closeAdd() { $('wk-add').hidden = true; }
+    function addManual() {
+      var title = $('wk-add-title').value.trim();
+      if (!title) { App.showError('タスク名を入力してください。'); return; }
+      // 画面上の保存済み・未確定の候補と同名なら追加しない（既存ルール：対象週の同名は不可）
+      var titles = allTasks().map(function (t) { return String(t.title); });
+      if (titles.indexOf(title) >= 0) { App.showError('この週に同名のタスク（候補を含む）があるため追加できません：' + title); return; }
+      var pv = $('wk-add-priority').value;
+      if (pv !== '' && !(Number(pv) >= 1 && Number(pv) % 1 === 0)) { App.showError('優先度は1以上の整数です。'); return; }
+      var days = [];
+      var cbs = $('wk-add-days').querySelectorAll('input');
+      for (var i = 0; i < cbs.length; i++) if (cbs[i].checked) days.push(cbs[i].value);
+      var kind = $('wk-add-kind').value;
+      var input = {
+        title: title, kind: kind, day: joinDays(days), priority: pv === '' ? '' : Number(pv),
+        focus: $('wk-add-focus').checked, memo: $('wk-add-memo').value,
+        aiPosition: kind === 'AI案件' ? $('wk-add-ai').value.trim() : ''
+      };
+      var week = state.week;
+      $('wk-add-save').disabled = true;
+      App.callServer('addManualTask', [week, input], function (res) {
+        $('wk-add-save').disabled = false;
+        // 追加したタスクだけを画面へ加える（他の未確定の変更・候補はそのまま）
+        if (res.targetWeek === state.week && res.task) state.saved.push(res.task);
+        closeAdd();
+        render();
+        var s = $('wk-saved');
+        s.textContent = '「' + title + '」を追加しました（確定タスクとして保存しました）。';
+        s.hidden = false;
+      }, function () { $('wk-add-save').disabled = false; });
+    }
+    buildAddDays();
+    $('wk-add-open').addEventListener('click', openAdd);
+    $('wk-add-cancel').addEventListener('click', closeAdd);
+    $('wk-add-save').addEventListener('click', addManual);
 
     window.Weekly = { parse: parseHandoff, state: state };
     $('wk-carry').addEventListener('click', importCarry);

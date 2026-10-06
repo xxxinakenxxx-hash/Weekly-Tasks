@@ -1,5 +1,6 @@
 <div class="wk-head">
   <h2 class="view-title">週間タスク</h2>
+  <button type="button" id="wk-add-open" class="btn btn-primary wk-add-open">＋ タスク追加</button>
   <div class="wk-nav">
     <button type="button" id="wk-prev" class="btn">◀ 前週</button>
     <span id="wk-week" class="wk-week"></span>
@@ -8,6 +9,27 @@
     <button type="button" id="wk-carry" class="btn">前週の次週候補・持越しを取り込む</button>
   </div>
 </div>
+
+<section id="wk-add" class="wk-panel wk-add" aria-labelledby="wk-add-heading" hidden>
+  <h3 id="wk-add-heading">タスクを追加</h3>
+  <p class="wk-muted">会議で決まったこと・口頭依頼・電話で発生したこと・自分で気づいた作業など、AI／Workで拾えないタスクを追加します。表示中の週に、確定タスクとしてすぐ保存されます。</p>
+  <label class="wk-record-field"><span>タスク名（必須）</span><input type="text" id="wk-add-title" aria-label="追加 タスク名"></label>
+  <div class="wk-fields">
+    <label class="wk-field"><span>種別</span><select id="wk-add-kind" aria-label="追加 種別"></select></label>
+    <label class="wk-field"><span>優先度</span><input type="number" id="wk-add-priority" class="wk-priority" min="1" step="1" aria-label="追加 優先度"></label>
+    <label class="wk-focus-label"><input type="checkbox" id="wk-add-focus" aria-label="追加 重点">重点</label>
+  </div>
+  <div id="wk-add-days" class="wk-days" role="group" aria-label="追加 曜日"><span class="wk-days-label">曜日（複数可。選ばなければ未配置）</span></div>
+  <label class="wk-record-field"><span>メモ</span><textarea id="wk-add-memo" rows="2" aria-label="追加 メモ"></textarea></label>
+  <div id="wk-add-ai-field" hidden>
+    <label class="wk-record-field"><span>AI案件現在地</span><textarea id="wk-add-ai" rows="2" aria-label="追加 AI案件現在地"></textarea></label>
+    <p class="wk-note">手動で追加したAI案件は、日次AI現在地の自動同期の対象外です（タスク名では突き合わせません）。現在地は「詳細・編集」で手入力します。</p>
+  </div>
+  <div class="wk-add-actions">
+    <button type="button" id="wk-add-save" class="btn btn-primary">追加して保存</button>
+    <button type="button" id="wk-add-cancel" class="btn">キャンセル</button>
+  </div>
+</section>
 
 <section class="wk-panel" aria-labelledby="wk-outlook-title">
   <h3 id="wk-outlook-title">今週の要点</h3>

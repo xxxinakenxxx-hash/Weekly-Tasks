@@ -11,6 +11,10 @@ var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId'];
 // 翌週へ展開する状態
 var CARRY_STATUSES = ['次週候補', '持越し'];
+// 手動タスク追加（追加実装 v1.2）で受け付ける項目。状態は既存の初期値「未着手」
+var MANUAL_ADD_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'memo', 'aiPosition'];
+// 手動追加の履歴：既存の操作区分「作成」に、この項目名で記録する（操作区分の値は増やさない）
+var MANUAL_ADD_FIELD = '手動追加';
 
 /** 対象週の週間ボード（対象週省略時は今週） */
 function getWeekBoard(targetWeek) {
@@ -95,6 +99,47 @@ function commitWeekBoard(targetWeek, payload) {
     });
     return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, loadedAt: nowText_() };
   });
+}
+
+/**
+ * 手動タスク追加（追加実装 v1.2）。AI／Workで拾えないタスクを、候補ではなく確定タスクとして「タスク」へ1行追加する。
+ * 新しいタスクIDを採番し、複数曜日でも1行のまま。履歴は「作成／手動追加」。対象週に同名のタスクがあれば追加しない。
+ */
+function addManualTask(targetWeek, input) {
+  assertWeek_(targetWeek);
+  var fields = pick_(input || {}, MANUAL_ADD_KEYS);
+  if (typeof fields.title === 'string') fields.title = fields.title.trim();
+  var task = Object.assign(fields, { targetWeek: targetWeek, status: '未着手' });
+  return withLock_(function () {
+    prepareCreate_(task);
+    var dup = findDuplicateTitles_(getTasks(targetWeek), [task], []);
+    if (dup.length) throw new Error(dup.join('\n'));
+    var created = createTask_(task, MANUAL_ADD_FIELD);
+    var saved = getTasks(targetWeek).filter(function (t) { return t.taskId === created.taskId; })[0];
+    return { targetWeek: targetWeek, task: saved, loadedAt: nowText_() };
+  });
+}
+
+/**
+ * 手動追加のタスク（履歴「作成／手動追加」）か、持越し元をたどると手動追加のタスクに行き着くタスクのIDの一覧（追加実装 v1.2）。
+ * ローカルのAI案件との安全な taskId 対応が成立していないため、日次AI現在地の自動同期の対象外にする。
+ */
+function manualTaskIds_() {
+  var manual = {};
+  getHistory().forEach(function (h) { if (h.op === '作成' && h.field === MANUAL_ADD_FIELD) manual[h.taskId] = true; });
+  var all = getTasksIncludingDeleted_();
+  var src = {};
+  all.forEach(function (t) { src[t.taskId] = String(t.sourceTaskId || ''); });
+  var out = {};
+  all.forEach(function (t) {
+    var id = t.taskId, seen = {};
+    while (id && !seen[id]) {
+      if (manual[id]) { out[t.taskId] = true; break; }
+      seen[id] = true;
+      id = src[id];
+    }
+  });
+  return out;
 }
 
 /**

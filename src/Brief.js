@@ -45,6 +45,7 @@ function saveMorningBrief(input) {
  * AI案件現在地の同期（追加実装 v1.1 §6）。同期するのは次をすべて満たすものだけ。
  * - 取得結果が「確認済み」（要確認・不一致・取得失敗・チャット未確認は上書きしない）
  * - taskId があり、朝ブリーフの日付の週の「タスク」行（削除済みを除く、種別AI案件）と一致する（タスク名では突き合わせない）
+ * - 手動追加のAI案件（持越し後の行を含む）ではない（v1.2：ローカルAI案件との安全な taskId 対応が成立していないため）
  * - 取得日時がその朝ブリーフの日付（古い日付の取得は当日取得として扱わない）
  * - 現在地が前回値と異なる（同じなら書き換えず、履歴も増やさない）
  */
@@ -53,7 +54,7 @@ function planAiSync_(date, items) {
   if (!items || !items.length) return out;
   var week = mondayOfDate_(date);
   var weekTasks = getTasks(week);
-  var seen = {};
+  var seen = {}, manual = null;
   items.forEach(function (it) {
     var label = it.title || it.taskId || '（名前なし）';
     if (it.result !== '確認済み') { out.skipped.push({ taskId: it.taskId, title: label, reason: it.result + 'のため更新しない' }); return; }
@@ -63,6 +64,8 @@ function planAiSync_(date, items) {
     var t = weekTasks.filter(function (x) { return x.taskId === it.taskId; })[0];
     if (!t) { out.skipped.push({ taskId: it.taskId, title: label, reason: '今週のタスクにtaskIdが一致しないため同期しない' }); return; }
     if (t.kind !== 'AI案件') { out.skipped.push({ taskId: it.taskId, title: label, reason: 'AI案件ではないため同期しない' }); return; }
+    if (!manual) manual = manualTaskIds_();
+    if (manual[it.taskId]) { out.skipped.push({ taskId: it.taskId, title: label, reason: '手動追加のAI案件で、ローカルAI案件との安全なtaskId対応が成立していないため同期しない' }); return; }
     if (String(it.at).slice(0, 10) !== date) { out.skipped.push({ taskId: it.taskId, title: label, reason: '取得日時が当日ではないため同期しない' }); return; }
     if (String(t.aiPosition) === it.position) { out.unchanged.push({ taskId: it.taskId, title: String(t.title) }); return; }
     prepareUpdate_(it.taskId, { aiPosition: it.position });

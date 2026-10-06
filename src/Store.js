@@ -227,13 +227,13 @@ function updateTask(taskId, changes) {
   return withLock_(function () { return updateTask_(taskId, changes); });
 }
 
-// 作成の本体（ロックは呼び出し側で取得する）
-function createTask_(input) {
+// 作成の本体（ロックは呼び出し側で取得する）。historyField：履歴「作成」の項目（v1.2：手動追加は「手動追加」、それ以外は空欄）
+function createTask_(input, historyField) {
   var task = prepareCreate_(input);
   var sheet = tasksSheet_();
   if (task.day.indexOf(DAY_SEPARATOR) >= 0) upgradeDayValidation_(sheet);
   appendObj_(sheet, SHEETS.TASKS, task);
-  appendHistory_([{ taskId: task.taskId, op: '作成', field: '', before: '', after: '' }]);
+  appendHistory_([{ taskId: task.taskId, op: '作成', field: historyField || '', before: '', after: '' }]);
   return task;
 }
 
