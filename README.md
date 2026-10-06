@@ -9,7 +9,7 @@ README.md               このファイル
 tasks/TASK_CURRENT.md   工程管理（現在工程）
 docs/official/          正本（統合企画書・案件概要書・機能仕様書・データ設計書 v1.7）
 docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1）
-docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」14列＝IS-04で「持越し元タスクID」を追加、「履歴」6列、「朝ブリーフ」8列）
+docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」15列＝IS-04で「持越し元タスクID」、IS-06で「削除済み」を追加、「履歴」6列、「朝ブリーフ」8列）
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式
 docs/BRIEF_FORMAT.md    朝ブリーフの受け渡し形式（朝情報.md → Project → 画面で保存）
@@ -28,7 +28,7 @@ src/                    GASソース（clasp push の対象）
   index.html ほか       2画面枠・タブ移動・共通CSS/JS・エラー枠
   view_weekly.html / weekly.html   週間タスク画面（表示・編集・候補の採用/削除・1回確定・再読込）
   view_brief.html / brief.html     朝ブリーフ画面（読込・保存・日付切替・表示、今週のタスクの日次更新）
-tests/                  ローカルテスト（node tests/store.test.js、is00test.test.js、board.test.js、brief.test.js、carry.test.js＝日次更新・持越し、exception.test.js＝例外・不一致）
+tests/                  ローカルテスト（node tests/store.test.js、is00test.test.js、board.test.js、brief.test.js、carry.test.js＝日次更新・持越し、exception.test.js＝例外・不一致、delete.test.js＝保存済みタスクの削除）
 ```
 
 ## 対象資産（IS-00 確認結果）
