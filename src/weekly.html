@@ -151,14 +151,23 @@
     // 他のタスクの未確定の変更・候補はそのまま残す
     function deleteSaved(t) {
       if (!window.confirm('「' + t.title + '」を削除します。\n週間タスク・朝ブリーフに表示されなくなります（Sheetsの行は残り、履歴に「削除」が記録されます）。')) return;
-      App.callServer('deleteTask', [state.week, t.key], function (res) {
-        state.saved = res.tasks;
-        delete state.edits[t.key];
-        showLoaded(res.loadedAt);
+      var week = state.week, key = t.key, title = t.title;
+      App.callServer('deleteTask', [week, key], function (res) {
+        // 削除したカードだけを画面から外す（他の未確定の変更・候補はそのまま）
+        state.saved = state.saved.filter(function (x) { return x.taskId !== key; });
+        delete state.edits[key];
+        delete state.openDetails[key]; delete state.openRecords[key]; delete state.openHistory[key];
+        if (res && res.loadedAt) showLoaded(res.loadedAt);
         render();
         var s = $('wk-saved');
-        s.textContent = '「' + res.deletedTitle + '」を削除しました（Sheetsの行は残し、削除済みにしました）。';
+        s.textContent = '「' + title + '」を削除しました（Sheetsの行は残し、削除済みにしました）。';
         s.hidden = false;
+      }, function () {
+        // 失敗したときは、画面の下にも知らせ、正データを読み直して実際の状態を表示する
+        var s = $('wk-saved');
+        s.textContent = '「' + title + '」の削除に失敗しました。画面上部のエラーを確認してください。';
+        s.hidden = false;
+        if (!hasPending()) load(week);
       });
     }
     function removeCandidate(key) {

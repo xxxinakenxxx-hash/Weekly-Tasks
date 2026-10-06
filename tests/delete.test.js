@@ -20,7 +20,9 @@ t('削除：行は残し「削除済み」にTRUE、履歴に「削除」を1行
   const h = g.getHistory(a.taskId);
   assert.deepStrictEqual([h.length, h[1].op, h[1].field, h[1].before, h[1].after], [2, '削除', '削除済み', '', 'TRUE']);
   assert.strictEqual(r.deletedTitle, 'TMPの今週業務・未処理件数確認');
-  assert.deepStrictEqual([...r.tasks].map(x => x.title), ['残るタスク']);
+  assert.strictEqual(r.taskId, a.taskId);
+  assert.deepStrictEqual(Object.keys(r).sort(), ['deletedTitle', 'loadedAt', 'targetWeek', 'taskId']);
+  assert.deepStrictEqual([...g.getTasks(W)].map(x => x.title), ['残るタスク']);
 });
 t('削除済みは週間ボード・タスク一覧（朝ブリーフの今週タスクも同じ読込）に出ない', () => {
   const g = setup();

@@ -106,7 +106,8 @@ function deleteTask(targetWeek, taskId) {
   if (!taskId) throw new Error('タスクIDを指定してください。');
   return withLock_(function () {
     var t = markTaskDeleted_(targetWeek, taskId);
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), deletedTitle: t.title, loadedAt: nowText_() };
+    // 返す値は最小限（画面側で該当カードを外す）
+    return { targetWeek: targetWeek, taskId: taskId, deletedTitle: String(t.title), loadedAt: nowText_() };
   });
 }
 
