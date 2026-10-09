@@ -8,7 +8,9 @@
 AI開発案件の現在地を巡回し、Google Drive「週間タスクボード」フォルダ内「週間タスク」フォルダ直下の「AI案件.md」へ保存してください（既存ファイルがあれば上書き。サブフォルダは作らない）。
 
 1. C:\Users\inamori240\Documents 配下から「TASK_CURRENT.md」という名前のファイルをすべて探し、見つかった各リポジトリを1案件として扱う。
-1A. 上の検索とは別に、次の「Claude Code案件」も1案件として扱う（ローカルの Documents 配下には無く、GitHub 上にある。docs/AI_CASES.md）。
+   - 「C:\Users\inamori240\Documents\営業AIメモ_chat_file_copies_20260719」はチャットファイルの複製でリポジトリではないため、案件として扱わない。
+   - 対象は、Documents 配下の4案件（machine-sales-system、営業AIメモ、機械販売事例アプリ、管理職AIメモ）と、次の1Aの1案件の合計5案件になる。これ以外の TASK_CURRENT.md が見つかった場合は、案件として扱ったうえで、報告で件数の違いを知らせる。
+1A. 上の検索とは別に、次の「Claude Code案件」も1案件として扱う（ローカルの Documents 配下には無く、GitHub 上にある。ログイン不要で読める）。
    - 案件名：週間タスク・朝ブリーフ
    - TASK_CURRENT.md の場所（案件キーとしてそのまま書く）：https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md
    - 読む場所：TASK_CURRENT.md＝https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/HEAD/tasks/TASK_CURRENT.md、正本＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/official、実装指示書＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/implementation、開発履歴＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/HEAD
@@ -16,7 +18,7 @@ AI開発案件の現在地を巡回し、Google Drive「週間タスクボード
    - 同じ案件を Documents 配下でも見つけた場合も1案件として扱い、上の場所を使う。
 2. 案件ごとに次を読む。
    - その案件の TASK_CURRENT.md
-   - Google Drive 上のその案件の正本・開発工程表・実装指示書・関連資料
+   - Google Drive 上のその案件の正本・開発工程表・実装指示書・関連資料（1Aの案件は、GitHub 上の正本・実装指示書）
    - Codexチャット（タスク一覧・アーカイブ一覧・各スレッド本文 read_thread）
    - Claude Code案件（1A）は、Codexチャットの代わりに GitHub の開発履歴（最新のコミット）
 3. 案件ごとに次の書式で書く。
