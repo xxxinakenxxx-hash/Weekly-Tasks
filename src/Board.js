@@ -5,12 +5,12 @@
 
 // 週間画面・朝ブリーフ画面で変更できる項目（IS-04で実施結果・メモ・次回申し送り、IS-05で例外情報を追加）
 // 追加改修④：指示ルート（指示元・実装先）を追加
-var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo'];
+var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey'];
 // 採用時に個別の確認が必要な例外区分（IS-05：情報源の不一致等を自動確定しない）
 var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 // 追加改修④：指示ルートも翌週へ引き継ぐ
-var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo'];
+var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey'];
 // 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
 var CARRY_STATUSES = ['次週候補', '持越し'];
 // 手動タスク追加（追加実装 v1.2）で受け付ける項目。状態は既存の初期値「未着手」
@@ -65,6 +65,8 @@ function commitWeekBoard(targetWeek, payload) {
   var updates = payload.updates || [];
   if (!creates.length && !updates.length) throw new Error('確定する変更がありません。');
   return withLock_(function () {
+    // 追加改修④ 継続処理：案件キーのある新しいAI案件で、指示ルートが空欄なら前の週の同じ案件から引き継ぐ
+    var inherited = applyCaseRoutes_(targetWeek, creates);
     var weekIds = getTasks(targetWeek).map(function (t) { return t.taskId; });
     var errors = [];
     creates.forEach(function (c, i) {
@@ -91,6 +93,8 @@ function commitWeekBoard(targetWeek, payload) {
     errors = errors.concat(findDuplicateTitles_(getTasks(targetWeek), creates, updates));
     // 持越し元タスクIDの確認：前の週に実在し、対象週へまだ取り込まれていないこと
     errors = errors.concat(checkCarrySources_(targetWeek, creates));
+    // 同じ案件キーのAI案件が対象週に2件以上にならないこと（案件の取り違え防止）
+    errors = errors.concat(findDuplicateCaseKeys_(getTasks(targetWeek), creates, updates));
     if (errors.length) throw new Error(errors.join('\n'));
 
     creates.forEach(function (c) {
@@ -99,8 +103,72 @@ function commitWeekBoard(targetWeek, payload) {
     updates.forEach(function (u) {
       updateTask_(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS));
     });
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, loadedAt: nowText_() };
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, routeInherited: inherited, loadedAt: nowText_() };
   });
+}
+
+/**
+ * 案件キーごとの、前の週の指示ルート（追加改修④ 継続処理）。保存はしない（週間画面の候補表示用）。
+ * 対象週より前の週で、同じ案件キー（削除済みを除くAI案件）の最も新しい週の行の指示元・実装先を返す。
+ * その週に同じキーの行が複数あり、指示ルートが食い違う場合は ambiguous とし、値を返さない（推測しない）。
+ */
+function getCaseRoutes(targetWeek, keys) {
+  assertWeek_(targetWeek);
+  var all = getTasks();
+  var out = {};
+  (keys || []).forEach(function (k) {
+    if (String(k || '').trim()) out[k] = caseRouteOf_(all, targetWeek, k);
+  });
+  return { targetWeek: targetWeek, routes: out };
+}
+
+function caseRouteOf_(all, targetWeek, key) {
+  var nk = caseKeyNorm_(key);
+  var rows = all.filter(function (t) {
+    return t.kind === 'AI案件' && caseKeyNorm_(t.caseKey) === nk && String(t.targetWeek) < String(targetWeek);
+  });
+  if (!rows.length) return { found: false };
+  var latest = rows.reduce(function (m, t) { return String(t.targetWeek) > m ? String(t.targetWeek) : m; }, '');
+  var same = rows.filter(function (t) { return String(t.targetWeek) === latest; });
+  var routes = same.map(function (t) { return String(t.instructFrom || '') + '\t' + String(t.implementTo || ''); });
+  if (routes.some(function (r) { return r !== routes[0]; })) return { found: false, ambiguous: true, fromWeek: latest };
+  return { found: true, fromWeek: latest, instructFrom: String(same[0].instructFrom || ''), implementTo: String(same[0].implementTo || '') };
+}
+
+// 新しいAI案件（案件キーあり、指示元・実装先とも空欄）に、前の週の同じ案件の指示ルートを入れる。入れたものを返す
+function applyCaseRoutes_(targetWeek, creates) {
+  var targets = creates.filter(function (c) {
+    return c.kind === 'AI案件' && String(c.caseKey || '').trim() && !String(c.instructFrom || '').trim() && !String(c.implementTo || '').trim();
+  });
+  if (!targets.length) return [];
+  var all = getTasks();
+  var out = [];
+  targets.forEach(function (c) {
+    var r = caseRouteOf_(all, targetWeek, c.caseKey);
+    if (!r.found || (!r.instructFrom && !r.implementTo)) return;
+    c.instructFrom = r.instructFrom;
+    c.implementTo = r.implementTo;
+    out.push({ title: String(c.title), fromWeek: r.fromWeek, instructFrom: r.instructFrom, implementTo: r.implementTo });
+  });
+  return out;
+}
+
+// 確定後の案件キーが、対象週の他のAI案件と重ならないこと
+function findDuplicateCaseKeys_(weekTasks, creates, updates) {
+  var changed = {};
+  updates.forEach(function (u) {
+    if (u.changes && u.changes.caseKey !== undefined) changed[u.taskId] = String(u.changes.caseKey);
+  });
+  var keys = weekTasks.map(function (t) { return { title: String(t.title), key: changed.hasOwnProperty(t.taskId) ? changed[t.taskId] : String(t.caseKey || '') }; })
+    .concat(creates.map(function (c) { return { title: String(c.title), key: String(c.caseKey || '') }; }));
+  var seen = {}, errors = [];
+  keys.forEach(function (x) {
+    var k = caseKeyNorm_(x.key);
+    if (!k) return;
+    if (seen[k]) errors.push('対象週に同じ案件キーのAI案件がすでにあります（「' + seen[k] + '」と「' + x.title + '」）：' + x.key);
+    else seen[k] = x.title;
+  });
+  return errors;
 }
 
 /**
@@ -176,7 +244,7 @@ function getCarryCandidates(targetWeek) {
     candidates.push({
       title: t.title, kind: t.kind, day: '', priority: t.priority, focus: t.focus === true, status: '未着手',
       exception: t.exception, aiPosition: t.aiPosition, handover: t.handover, sourceTaskId: t.taskId,
-      instructFrom: String(t.instructFrom || ''), implementTo: String(t.implementTo || ''),
+      instructFrom: String(t.instructFrom || ''), implementTo: String(t.implementTo || ''), caseKey: String(t.caseKey || ''),
       sourceStatus: t.status
     });
   });

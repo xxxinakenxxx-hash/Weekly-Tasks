@@ -3,7 +3,7 @@
   (function () {
     var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
     var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo'];
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey'];
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
@@ -97,6 +97,11 @@
           if (typeof t['AI案件現在地'] !== 'string') errors.push(n + '「AI案件現在地」は文字列です。');
           else if (t['種別'] !== 'AI案件') errors.push(n + '「AI案件現在地」は種別がAI案件の場合だけ指定できます。');
         }
+        // 案件キー（追加改修④ 継続処理）：AI案件.md に記載された TASK_CURRENT.md の場所。任意
+        if (t['案件キー'] !== undefined && t['案件キー'] !== '') {
+          if (typeof t['案件キー'] !== 'string' || !/TASK_CURRENT\.md\s*$/i.test(t['案件キー'])) errors.push(n + '「案件キー」は AI案件.md に記載された TASK_CURRENT.md の場所です。');
+          else if (t['種別'] !== 'AI案件') errors.push(n + '「案件キー」は種別がAI案件の場合だけ指定できます。');
+        }
       });
       if (errors.length) throw new Error(errors.join(' '));
       return data;
@@ -121,11 +126,33 @@
         return {
           key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: parseDays(t['曜日']) || '',
           priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
-          status: '未着手', exception: t['例外情報'] || '', aiPosition: t['AI案件現在地'] || ''
+          status: '未着手', exception: t['例外情報'] || '', aiPosition: t['AI案件現在地'] || '',
+          caseKey: String(t['案件キー'] || '').trim(), instructFrom: '', implementTo: ''
         };
       });
       $('wk-import').open = false;
       render();
+      fillCaseRoutes();
+    }
+    // 追加改修④ 継続処理：案件キーのある候補に、前の週の同じ案件の指示ルートを入れる（保存は「確定して保存」）。
+    // 特定できない（前の週に無い・食い違う）場合は入れない（未設定のまま）
+    function fillCaseRoutes() {
+      var keys = state.candidates.filter(function (c) { return c.kind === 'AI案件' && c.caseKey; }).map(function (c) { return c.caseKey; });
+      if (!keys.length) return;
+      var week = state.week;
+      App.callServer('getCaseRoutes', [week, keys], function (res) {
+        if (res.targetWeek !== state.week) return;
+        state.candidates.forEach(function (c) {
+          var r = c.caseKey && res.routes[c.caseKey];
+          if (!r || c.instructFrom || c.implementTo) return;
+          if (r.found && (r.instructFrom || r.implementTo)) {
+            c.instructFrom = r.instructFrom; c.implementTo = r.implementTo; c.routeNote = r.fromWeek + ' の週から引継ぎ';
+          } else if (r.ambiguous) {
+            c.routeNote = '前の週に同じ案件キーで食い違う指示ルートがあるため引き継がない';
+          }
+        });
+        render();
+      });
     }
 
     function showExcluded(titles) {
@@ -160,6 +187,8 @@
       if (task.isCandidate) {
         var c = state.candidates.filter(function (x) { return x.key === task.key; })[0];
         c[key] = value;
+        // 指示ルートを手で変えたら「引継ぎ」の注記は外す
+        if (key === 'instructFrom' || key === 'implementTo') delete c.routeNote;
       } else {
         var orig = state.saved.filter(function (x) { return x.taskId === task.key; })[0];
         var e = state.edits[task.key] || {};
@@ -224,6 +253,7 @@
       var p = el('p', 'wk-card-route' + (unset ? ' is-unset' : ''));
       p.appendChild(el('span', 'wk-route-label', '指示ルート：'));
       p.appendChild(el('span', 'wk-route-value', routeText(t)));
+      if (t.isCandidate && t.routeNote) p.appendChild(el('span', 'wk-route-note', '（' + t.routeNote + '）'));
       return p;
     }
 
@@ -343,6 +373,18 @@
           rt.appendChild(inp);
         });
         d.appendChild(rt);
+        // 案件キー：指示ルートを翌週以降へ引き継ぐための識別（AI案件.md の TASK_CURRENT.md の場所）
+        var kl = el('label', 'wk-record-field wk-casekey');
+        kl.appendChild(el('span', '', '案件キー（AI案件.md に記載された TASK_CURRENT.md の場所。翌週以降の指示ルートの引継ぎに使う。空欄なら引き継がない）'));
+        var ki = el('input', 'wk-casekey-input');
+        ki.type = 'text'; ki.value = t.caseKey || ''; ki.setAttribute('aria-label', '案件キー');
+        ki.addEventListener('change', function () {
+          var v = ki.value.trim();
+          if (v && !/TASK_CURRENT\.md$/i.test(v)) { App.showError('案件キーは AI案件.md に記載された TASK_CURRENT.md の場所（…\\TASK_CURRENT.md）です。'); ki.value = t.caseKey || ''; return; }
+          setField(t, 'caseKey', v);
+        });
+        kl.appendChild(ki);
+        d.appendChild(kl);
       }
       if (t.aiPosition) d.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
       if (t.exception) d.appendChild(exceptionBox(t.exception));
@@ -565,7 +607,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', instructFrom: c.instructFrom || '', implementTo: c.implementTo || '', exceptionConfirmed: c.exceptionConfirmed === true };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', instructFrom: c.instructFrom || '', implementTo: c.implementTo || '', caseKey: c.caseKey || '', exceptionConfirmed: c.exceptionConfirmed === true };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};

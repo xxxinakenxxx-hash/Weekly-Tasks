@@ -43,7 +43,9 @@ var SHEETS = {
       { key: 'deleted', header: '削除済み' },
       // 追加改修④ 指示ルート：AI案件の「指示元 → 実装先」（自由記入。空欄＝未設定）
       { key: 'instructFrom', header: '指示元' },
-      { key: 'implementTo', header: '実装先' }
+      { key: 'implementTo', header: '実装先' },
+      // 追加改修④ 継続処理：AI案件の識別キー（AI案件.md に記載された TASK_CURRENT.md の場所）。同じキーの前の週の行から指示ルートを引き継ぐ
+      { key: 'caseKey', header: '案件キー' }
     ]
   },
   HISTORY: {

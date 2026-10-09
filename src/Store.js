@@ -48,7 +48,7 @@ function writeHeader_(sheet, def) {
 }
 
 // 既存の「タスク」シートに、後から追加した列の見出しを末尾に足す（既存の列・行は変更しない）
-// IS-04：13列→「持越し元タスクID」（14列目）、IS-06：14列→「削除済み」（15列目）、追加改修④：15列→「指示元」「実装先」（16・17列目）
+// IS-04：13列→「持越し元タスクID」（14列目）、IS-06：14列→「削除済み」（15列目）、追加改修④：15列→「指示元」「実装先」「案件キー」（16〜18列目）
 function upgradeTasksHeader_(sheet) {
   var def = SHEETS.TASKS;
   var headers = headersOf_(def);
@@ -324,7 +324,7 @@ function normalizeTask_(t) {
     if (out[k] === undefined || out[k] === null) out[k] = '';
   });
   // 指示ルート（追加改修④）：前後の空白だけを除く。空欄＝未設定（推測で補わない）
-  ['instructFrom', 'implementTo'].forEach(function (k) {
+  ['instructFrom', 'implementTo', 'caseKey'].forEach(function (k) {
     out[k] = out[k] === undefined || out[k] === null ? '' : String(out[k]).trim();
   });
   out.day = normalizeDays_(out.day);
@@ -350,7 +350,14 @@ function validateTask_(t) {
   }
   if (t.aiPosition !== '' && t.kind !== 'AI案件') errors.push('AI案件現在地は種別がAI案件の場合だけ設定できます。');
   if ((t.instructFrom !== '' || t.implementTo !== '') && t.kind !== 'AI案件') errors.push('指示ルート（指示元・実装先）は種別がAI案件の場合だけ設定できます。');
+  if (t.caseKey !== '' && t.kind !== 'AI案件') errors.push('案件キーは種別がAI案件の場合だけ設定できます。');
+  if (t.caseKey !== '' && !/TASK_CURRENT\.md$/i.test(t.caseKey)) errors.push('案件キーは AI案件.md に記載された TASK_CURRENT.md の場所（…\\TASK_CURRENT.md）です：' + t.caseKey);
   if (errors.length) throw new Error(errors.join('\n'));
+}
+
+// 案件キーの比較用（前後の空白を除き、「/」を「\」に揃え、大文字・小文字を区別しない。Windowsのパスのため）
+function caseKeyNorm_(s) {
+  return String(s || '').trim().replace(/\//g, '\\').toLowerCase();
 }
 
 function isMonday_(ymd) {

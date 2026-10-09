@@ -95,13 +95,13 @@ t('移行：既存14列の「タスク」に15列目の見出しだけを追加�
   assert.strictEqual(JSON.stringify(sh.data[1].slice(0, 14)), before);
   assert.strictEqual(tasks.length, 1);
 });
-t('移行：既存13列なら14列目以降（持越し元タスクID・削除済み・指示元・実装先）の見出しを追加する', () => {
+t('移行：既存13列なら14列目以降（持越し元タスクID・削除済み・指示元・実装先・案件キー）の見出しを追加する', () => {
   const g = load();
   g.setupSheets();
   const sh = g.__sheets['タスク'];
   sh.data = [[...g.headersOf_(g.SHEETS.TASKS)].slice(0, 13)];
   g.getTasks();
-  assert.deepStrictEqual(sh.data[0].slice(13), ['持越し元タスクID', '削除済み', '指示元', '実装先']);
+  assert.deepStrictEqual(sh.data[0].slice(13), ['持越し元タスクID', '削除済み', '指示元', '実装先', '案件キー']);
 });
 t('移行：「履歴」の操作列の入力規則に「削除」を足す（値・行は変えない）', () => {
   const g = load();
