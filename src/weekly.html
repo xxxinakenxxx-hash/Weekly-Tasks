@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, dragKey: null, dragFrom: '', loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, routeOther: {}, dragKey: null, dragFrom: '', loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -257,6 +257,45 @@
       return p;
     }
 
+    // 指示ルートの選択（追加改修④）：選択肢から選ぶ。「その他」のときだけ自由入力。「未設定」は空欄として保存する。
+    // 選択肢にない保存済みの値は「その他」＋その値として表示する（既存の値は変えない）
+    var ROUTE_OPTIONS = ['ChatGPT', 'Claude', 'Claude Code', 'Codex', 'Gemini', 'その他', '未設定'];
+    var ROUTE_FIXED = ['ChatGPT', 'Claude', 'Claude Code', 'Codex', 'Gemini'];
+    function routePicker(t, key, label) {
+      var flagKey = t.key + '|' + key;
+      var cur = String(t[key] || '').trim();
+      var mode = state.routeOther[flagKey] ? 'その他' : !cur ? '未設定' : ROUTE_FIXED.indexOf(cur) >= 0 ? cur : 'その他';
+      var box = el('span', 'wk-route-pick');
+      var sel = el('select', 'wk-route-select');
+      sel.setAttribute('aria-label', label);
+      ROUTE_OPTIONS.forEach(function (v) { var o = el('option', '', v); o.value = v; sel.appendChild(o); });
+      sel.value = mode;
+      var other = el('input', 'wk-route-input');
+      other.type = 'text'; other.setAttribute('aria-label', label + '（その他）'); other.placeholder = label + 'を入力';
+      other.value = mode === 'その他' && ROUTE_FIXED.indexOf(cur) < 0 ? cur : '';
+      other.hidden = mode !== 'その他';
+      sel.addEventListener('change', function () {
+        if (sel.value === 'その他') {
+          // 自由入力欄を出すだけ（入力するまで値は変えない）
+          state.routeOther[flagKey] = true;
+          render();
+          return;
+        }
+        delete state.routeOther[flagKey];
+        setField(t, key, sel.value === '未設定' ? '' : sel.value);
+      });
+      other.addEventListener('change', function () {
+        var v = other.value.trim();
+        if (v === '未設定') v = '';
+        // 選択肢と同じ値・空欄なら、その選択肢（未設定）の表示に戻す
+        if (!v || ROUTE_FIXED.indexOf(v) >= 0) delete state.routeOther[flagKey];
+        setField(t, key, v);
+      });
+      box.appendChild(sel);
+      box.appendChild(other);
+      return box;
+    }
+
     // 一覧カード（IS-06 是正）：一覧ではタスク名・状態・優先度・重点・例外の有無だけを見せ、
     // 編集項目と詳細（現在地・例外の根拠・履歴など）は「詳細・編集」を開いたときに出す
     function card(t, colDay) {
@@ -364,13 +403,10 @@
       // 指示ルートの編集（AI案件のみ。追加改修④）
       if (t.kind === 'AI案件') {
         var rt = el('div', 'wk-route-edit');
-        rt.appendChild(el('span', 'wk-days-label', '指示ルート（指示元 → 実装先。空欄は未設定）'));
+        rt.appendChild(el('span', 'wk-days-label', '指示ルート（指示元 → 実装先）'));
         [['instructFrom', '指示元'], ['implementTo', '実装先']].forEach(function (f, i) {
           if (i === 1) rt.appendChild(el('span', 'wk-route-arrow', '→'));
-          var inp = el('input', 'wk-route-input');
-          inp.type = 'text'; inp.value = t[f[0]] || ''; inp.placeholder = f[1]; inp.setAttribute('aria-label', f[1]);
-          inp.addEventListener('change', function () { setField(t, f[0], inp.value.trim()); });
-          rt.appendChild(inp);
+          rt.appendChild(routePicker(t, f[0], f[1]));
         });
         d.appendChild(rt);
         // 案件キー：指示ルートを翌週以降へ引き継ぐための識別（AI案件.md の TASK_CURRENT.md の場所）
@@ -570,6 +606,7 @@
         state.week = res.targetWeek;
         state.saved = res.tasks;
         state.edits = {};
+        state.routeOther = {};
         $('wk-loading').hidden = true;
         $('wk-board').hidden = false;
         showLoaded(res.loadedAt);
@@ -620,6 +657,7 @@
       App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates }], function (res) {
         state.saved = res.tasks;
         state.edits = {};
+        state.routeOther = {};
         state.candidates = [];
         showLoaded(res.loadedAt);
         render();
