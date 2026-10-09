@@ -8,10 +8,17 @@
 AI開発案件の現在地を巡回し、Google Drive「週間タスクボード」フォルダ内「週間タスク」フォルダ直下の「AI案件.md」へ保存してください（既存ファイルがあれば上書き。サブフォルダは作らない）。
 
 1. C:\Users\inamori240\Documents 配下から「TASK_CURRENT.md」という名前のファイルをすべて探し、見つかった各リポジトリを1案件として扱う。
+1A. 上の検索とは別に、次の「Claude Code案件」も1案件として扱う（ローカルの Documents 配下には無く、GitHub 上にある。docs/AI_CASES.md）。
+   - 案件名：週間タスク・朝ブリーフ
+   - TASK_CURRENT.md の場所（案件キーとしてそのまま書く）：https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md
+   - 読む場所：TASK_CURRENT.md＝https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/HEAD/tasks/TASK_CURRENT.md、正本＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/official、実装指示書＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/implementation、開発履歴＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/HEAD
+   - Codexチャットは使っていない案件のため、Codexチャットは「対象外（Claude Code案件）」と書く。開発履歴（最新のコミット）を代わりの情報源として照らし合わせる。
+   - 同じ案件を Documents 配下でも見つけた場合も1案件として扱い、上の場所を使う。
 2. 案件ごとに次を読む。
    - その案件の TASK_CURRENT.md
    - Google Drive 上のその案件の正本・開発工程表・実装指示書・関連資料
    - Codexチャット（タスク一覧・アーカイブ一覧・各スレッド本文 read_thread）
+   - Claude Code案件（1A）は、Codexチャットの代わりに GitHub の開発履歴（最新のコミット）
 3. 案件ごとに次の書式で書く。
 
 # AI案件
@@ -33,12 +40,14 @@ AI開発案件の現在地を巡回し、Google Drive「週間タスクボード
 - 参照した情報源：
   - TASK_CURRENT.md：（ファイルの場所）
   - Drive：（読んだファイル名）
-  - Codexチャット：（スレッド名。特定できない場合は「チャット未確認」）
+  - Codexチャット：（スレッド名。特定できない場合は「チャット未確認」。Claude Code案件は「対象外（Claude Code案件）」）
+  - 開発履歴：（Claude Code案件だけ。読んだコミット履歴の場所と最新コミットの日時・内容）
 - 不一致の内容：（情報源整合が「不一致」の場合だけ）
 
 ルール：
 - 情報源どうしが一致しない場合、どちらかを正としない。「情報源整合：不一致」とし、何が違うかを書く。
 - Drive資料だけで最新と判断しない。TASK_CURRENT.md にない内容を推測で補わない。
-- 案件に対応するCodexチャットを特定できない場合は推測で紐付けず「チャット未確認」と書く。
+- 案件に対応するCodexチャットを特定できない場合は推測で紐付けず「チャット未確認」と書く（Claude Code案件は「対象外（Claude Code案件）」）。
+- GitHub 上の場所を読めなかった場合は推測で補わず「取得失敗：（場所）」と書く。
 - 保存後、ファイル名・保存先・案件数・不一致の件数・チャット未確認の件数を報告する。
 ```

@@ -189,5 +189,31 @@ t('初期登録の後：日次の朝ブリーフも案件キーで今週の行�
   assert.strictEqual(task(g, g.CASE_KEY_BACKFILL.items[2].taskId).aiPosition, 'P2-08 §14-2 着手');
 });
 
+// ---- Claude Code案件（GitHub上の TASK_CURRENT.md を案件キーにする。docs/AI_CASES.md） ----
+const KC = 'https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md';
+t('Claude Code案件：GitHubの場所の案件キーで、週間分析の追加・指示ルートの引継ぎ・日次同期ができる（既存のローカル案件と並べても混ざらない）', () => {
+  const g = setup(); seedBackfillRows(g);
+  g.applyCaseKeyBackfill(g.CASE_KEY_BACKFILL.id);
+  g.commitWeekBoard(W, { creates: [{ title: '週間タスク・朝ブリーフ', kind: 'AI案件', caseKey: KC, aiPosition: 'IS-06 継続中' }] });
+  const w = g.getTasks(W).find(x => x.caseKey === KC);
+  g.commitWeekBoard(W, { updates: [{ taskId: w.taskId, changes: { instructFrom: 'ChatGPT', implementTo: 'Claude Code' } }] });
+  const r = g.saveMorningBrief(brief(D, [
+    item({ caseKey: KC, title: '週間タスク・朝ブリーフ', position: 'IS-06 ⑦ 待ち' }),
+    item({ caseKey: KA, title: '営業AIメモ', result: 'チャット未確認', position: 'P2-08', note: '対応チャット不明' })]));
+  assert.strictEqual(task(g, w.taskId).aiPosition, 'IS-06 ⑦ 待ち');
+  assert.strictEqual(task(g, g.CASE_KEY_BACKFILL.items[2].taskId).aiLatestResult, 'チャット未確認：対応チャット不明');
+  assert.strictEqual(r.aiSync.synced.length + r.aiSync.recorded.length, 2);
+  g.commitWeekBoard(N, { creates: [{ title: '週間タスク・朝ブリーフ', kind: 'AI案件', caseKey: KC }, { title: '営業AIメモ', kind: 'AI案件', caseKey: KA }] });
+  const n = g.getTasks(N);
+  assert.deepStrictEqual(plain(n.map(x => [x.title, x.instructFrom, x.implementTo])), [['週間タスク・朝ブリーフ', 'ChatGPT', 'Claude Code'], ['営業AIメモ', 'ChatGPT', 'Codex']]);
+});
+t('Claude Code案件：既存のローカル4案件の案件キー・指示ルートは変わらない', () => {
+  const g = setup(); seedBackfillRows(g);
+  g.applyCaseKeyBackfill(g.CASE_KEY_BACKFILL.id);
+  const before = JSON.stringify(g.CASE_KEY_BACKFILL.items.map(it => [task(g, it.taskId).caseKey, task(g, it.taskId).instructFrom, task(g, it.taskId).implementTo]));
+  g.commitWeekBoard(W, { creates: [{ title: '週間タスク・朝ブリーフ', kind: 'AI案件', caseKey: KC }] });
+  assert.strictEqual(JSON.stringify(g.CASE_KEY_BACKFILL.items.map(it => [task(g, it.taskId).caseKey, task(g, it.taskId).instructFrom, task(g, it.taskId).implementTo])), before);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

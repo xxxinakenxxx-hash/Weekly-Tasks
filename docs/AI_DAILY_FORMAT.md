@@ -28,10 +28,12 @@
 - 確認元：
   - TASK_CURRENT.md：（ファイルの場所）
   - Drive：（読んだファイル名）
-  - Codexチャット：（スレッド名。特定できない場合は「チャット未確認」）
+  - Codexチャット：（スレッド名。特定できない場合は「チャット未確認」。Claude Code案件は「対象外（Claude Code案件）」）
+  - 開発履歴：（Claude Code案件だけ。GitHub のコミット履歴。docs/AI_CASES.md）
 ```
 
 ## ルール
+- Claude Code案件（docs/AI_CASES.md。例：週間タスク・朝ブリーフ）は Documents 配下に無く、GitHub 上の場所を「TASK_CURRENT.md：」に書く（例：https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md）。
 - 「確認元 - TASK_CURRENT.md」の場所は、その案件の「案件キー」として使う（追加改修④③。週間タスクの「案件キー」列、朝ブリーフJSONの「案件キー」と同じ値）。場所は一字も変えずに書く。
 - 現在地は確認できた事実だけを書き、推測で補わない。
 - 情報源どうしが一致しない場合は、どちらかを正としない。取得結果を「不一致」とし、内容に違いを書く。

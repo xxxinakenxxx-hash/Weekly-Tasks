@@ -13,6 +13,7 @@ docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式
 docs/BRIEF_FORMAT.md    朝ブリーフの受け渡し形式（朝情報.md＋AI案件_日次現在地.md → Project → 画面で保存。AI案件現在地はtaskIdで同期）
+docs/AI_CASES.md        ローカル以外のAI案件一覧（Claude Code案件。GitHub上の TASK_CURRENT.md・正本・開発履歴の場所と案件キー）
 docs/AI_DAILY_FORMAT.md AI案件_日次現在地.md の書式（Desktop版Workの日次AI現在地巡回、追加実装 v1.1）
 docs/WORK_SCHEDULE.md   Workの自動実行設定（設定場所・方法・実行時刻・出力先。実機で確認した内容だけを記録）
 docs/prompts/           週次・毎朝の標準指示文（Web版Work・デスクトップ版Work・ChatGPT Project）
