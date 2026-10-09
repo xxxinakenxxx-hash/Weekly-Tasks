@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; margin: 0; padding: 16px; color: #222; background: #f6f6f3; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    p { margin: 6px 0; line-height: 1.6; font-size: 14px; }
+    .muted { color: #666; font-size: 12px; }
+    .rows { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+    .row { background: #fff; border: 1px solid #d9d9d4; border-radius: 8px; padding: 10px; font-size: 13px; overflow-wrap: anywhere; }
+    .row.ng { border-color: #b3261e; }
+    .row .st { display: inline-block; padding: 1px 8px; border-radius: 10px; font-weight: bold; background: #e3eefb; color: #1f4f86; }
+    .row.ng .st { background: #fbe3e1; color: #b3261e; }
+    .row.done .st { background: #e8f2e8; color: #2d6a2d; }
+    .btn { font-size: 15px; padding: 10px 16px; border-radius: 8px; border: 1px solid #2f6fb3; background: #2f6fb3; color: #fff; }
+    .btn:disabled { opacity: .5; }
+    .msg { font-weight: bold; }
+    .err { color: #b3261e; white-space: pre-wrap; }
+    a { color: #2f6fb3; }
+  </style>
+</head>
+<body>
+  <h1>案件キーの初期登録（1回だけ）</h1>
+  <p>今週（<span id="ck-week"></span>の週）の既存AI案件に、AI案件.md に書かれている TASK_CURRENT.md の場所を「案件キー」として登録します。手で入力する必要はありません。</p>
+  <p class="muted">出典：<span id="ck-source"></span>。タスク名と AI案件.md の見出しが完全に一致する行だけを対象にしています。「実行」を押すまで、Sheetsは変わりません。</p>
+  <div id="ck-rows" class="rows"><p class="muted">読み込み中…</p></div>
+  <p id="ck-msg" class="msg" hidden></p>
+  <p id="ck-err" class="err" hidden></p>
+  <button type="button" id="ck-apply" class="btn" disabled>実行（Sheetsに書き込む）</button>
+  <p><a href="<?= appUrl ?>">週間タスク画面へ戻る</a></p>
+  <script>
+    (function () {
+      var plan = null;
+      function $(id) { return document.getElementById(id); }
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+      function show(p) {
+        plan = p;
+        $('ck-week').textContent = p.targetWeek;
+        $('ck-source').textContent = p.source;
+        var box = $('ck-rows'); box.innerHTML = '';
+        p.rows.forEach(function (r) {
+          var d = el('div', 'row' + (r.ok ? '' : ' ng') + (r.state === 'done' ? ' done' : ''));
+          d.setAttribute('data-task-id', r.taskId);
+          d.appendChild(el('span', 'st', r.reason));
+          d.appendChild(el('p', '', 'タスク名：' + r.title + '（AI案件.md「' + r.heading + '」）'));
+          d.appendChild(el('p', '', '変更前：' + (r.before || '（空欄）')));
+          d.appendChild(el('p', '', '変更後：' + r.after));
+          if (r.instructRoute && (r.instructRoute[0] || r.instructRoute[1])) d.appendChild(el('p', 'muted', '指示ルート：' + (r.instructRoute[0] || '未設定') + ' → ' + (r.instructRoute[1] || '未設定') + '（変えません）'));
+          box.appendChild(d);
+        });
+        $('ck-apply').disabled = !p.canApply;
+        var m = $('ck-msg');
+        m.hidden = !(p.done || !p.canApply);
+        m.textContent = p.done ? 'すべて登録済みです。これ以上の操作は不要です。' : '条件を満たさない行があるため、実行できません（何も書き込みません）。';
+        $('ck-err').hidden = true;
+      }
+      function fail(e) { var x = $('ck-err'); x.textContent = (e && e.message) || String(e); x.hidden = false; }
+      function load() { google.script.run.withSuccessHandler(show).withFailureHandler(fail).getCaseKeyBackfillPlan(); }
+      $('ck-apply').addEventListener('click', function () {
+        if (!plan || !window.confirm('次の ' + plan.rows.filter(function (r) { return r.state === 'todo'; }).length + ' 行に案件キーを書き込みます。よろしいですか？\n（履歴に「修正／案件キー」が残ります）')) return;
+        $('ck-apply').disabled = true;
+        google.script.run.withSuccessHandler(function (p) { show(p); $('ck-msg').hidden = false; $('ck-msg').textContent = '書き込みました（' + p.written.length + '行）。' + (p.done ? 'すべて登録済みです。' : ''); })
+          .withFailureHandler(function (e) { fail(e); load(); }).applyCaseKeyBackfill(plan.id);
+      });
+      load();
+    })();
+  </script>
+</body>
+</html>

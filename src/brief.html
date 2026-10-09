@@ -104,11 +104,12 @@
         else ai.forEach(function (x, i) {
           var n = '「AI案件現在地」' + (i + 1) + '件目：';
           if (!x || typeof x !== 'object' || Array.isArray(x)) { errors.push(n + '形式が不正です。'); return; }
-          var it = { taskId: String(x['taskId'] || '').trim(), title: String(x['案件名'] || ''), result: String(x['取得結果'] || ''),
+          var it = { taskId: String(x['taskId'] || '').trim(), caseKey: String(x['案件キー'] || '').trim(), title: String(x['案件名'] || ''), result: String(x['取得結果'] || ''),
             position: String(x['現在地'] || '').trim(), at: String(x['取得日時'] || ''), note: String(x['内容'] || '') };
           if (AI_RESULTS.indexOf(it.result) < 0) errors.push(n + '「取得結果」は ' + AI_RESULTS.join('／') + ' のいずれかです。');
           if (it.result === '確認済み' && !it.position) errors.push(n + '確認済みの場合は「現在地」が必要です。');
           if (it.result === '確認済み' && !/^\d{4}-\d{2}-\d{2}/.test(it.at)) errors.push(n + '確認済みの場合は「取得日時」（yyyy-MM-dd HH:mm）が必要です。');
+          if (it.caseKey && !/TASK_CURRENT\.md$/i.test(it.caseKey)) errors.push(n + '「案件キー」は TASK_CURRENT.md の場所です。');
           out.aiPositions.push(it);
         });
       }
@@ -126,17 +127,19 @@
         var li = mk2('li', it.result === '確認済み' ? 'br-ai-ok' : 'br-exc');
         li.appendChild(mk2('span', it.result === '確認済み' ? 'br-ai-tag' : 'wk-exc-tag', it.result));
         li.appendChild(mk2('span', 'br-head', it.title || '（案件名なし）'));
-        var body = it.result === '確認済み' ? it.position : (it.note || '現在地は更新しない（前回の確認済み現在地のまま）');
-        li.appendChild(mk2('span', 'br-note', clip(body, 60)));
-        if (!it.taskId) li.appendChild(mk2('span', 'br-note', '（taskIdなし：同期しない）'));
+        var body = it.result === '確認済み' ? it.position : ((it.position ? it.position + '　' : '') + (it.note || '') + '（未確認として記録。現在地は前回の確認済みのまま）');
+        li.appendChild(mk2('span', 'br-note', clip(body, 80)));
+        if (!it.taskId && !it.caseKey) li.appendChild(mk2('span', 'br-note', '（案件キー・taskIdなし：同期しない）'));
         ul.appendChild(li);
       });
     }
     function showSync(sync) {
       var p = $('br-ai-sync');
-      if (!sync || !(sync.synced.length + sync.unchanged.length + sync.skipped.length)) { p.hidden = true; return; }
+      var recorded = sync && sync.recorded ? sync.recorded : [];
+      if (!sync || !(sync.synced.length + recorded.length + sync.unchanged.length + sync.skipped.length)) { p.hidden = true; return; }
       var parts = [];
-      if (sync.synced.length) parts.push('現在地を更新：' + sync.synced.map(function (x) { return x.title; }).join('、'));
+      if (sync.synced.length) parts.push('確認済みの現在地を記録：' + sync.synced.map(function (x) { return x.title + (x.positionChanged === false ? '（前回と同じ現在地）' : ''); }).join('、'));
+      if (recorded.length) parts.push('未確認として最新取得に記録（現在地は前回のまま）：' + recorded.map(function (x) { return x.title + '（' + x.result + '）'; }).join('、'));
       if (sync.unchanged.length) parts.push('前回と同じため変更なし：' + sync.unchanged.map(function (x) { return x.title; }).join('、'));
       if (sync.skipped.length) parts.push('更新しない：' + sync.skipped.map(function (x) { return x.title + '（' + x.reason + '）'; }).join('、'));
       p.textContent = 'AI案件現在地　' + parts.join('　／　');
@@ -268,10 +271,21 @@
       var sum = mk('summary', 'br-task-line');
       sum.appendChild(mk('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind === 'AI案件' ? 'AI' : '通常'));
       var tt = mk('span', 'br-task-title', t.title);
-      // AI案件は最新の確認済み現在地（「タスク」のAI案件現在地）の最初の一文を短く添える
-      if (t.kind === 'AI案件' && t.aiPosition) {
-        var pos = String(t.aiPosition).replace(/^現在工程：/, ''); var k = pos.indexOf('。'); if (k >= 0) pos = pos.slice(0, k);
-        tt.appendChild(mk('span', 'br-task-pos', '現在地：' + pos));
+      // AI案件は現在地（「タスク」のAI案件現在地）の最初の一文を短く添え、確認済みか日次で未確認かを示す（追加改修③）。
+      // 確認済みより新しい未確認の取得は「最新取得」として別に出す
+      if (t.kind === 'AI案件') {
+        var ai = App.aiState(t);
+        if (t.aiPosition) {
+          var pl = mk('span', 'br-task-posline');
+          pl.appendChild(mk('span', 'wk-pos-state' + (ai.confirmed ? ' is-ok' : ' is-unverified'), ai.stateText));
+          pl.appendChild(mk('span', 'br-task-pos', '現在地：' + App.shortPos(t.aiPosition)));
+          tt.appendChild(pl);
+        }
+        if (ai.latest) {
+          var lt = mk('span', 'br-task-latest', '最新取得 ' + ai.latest.when + '：' + (ai.latest.position ? App.shortPos(ai.latest.position) : '現在地なし'));
+          lt.appendChild(mk('span', 'wk-exc-tag', ai.latest.type));
+          tt.appendChild(lt);
+        }
       }
       sum.appendChild(tt);
       // 例外情報がある場合は区分を目印で出す（IS-05）

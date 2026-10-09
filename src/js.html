@@ -42,7 +42,33 @@
         })[fnName].apply(null, args || []);
     }
 
-    window.App = { showView: showView, showError: showError, clearError: clearError, callServer: callServer };
+    // AI案件の現在地の状態（追加改修③）：確認済みの現在地と、まだ確認されていない最新の取得を区別する（週間・朝ブリーフ共通）
+    function shortPos(text) {
+      var s = String(text || '').replace(/^現在工程：/, '');
+      var i = s.indexOf('。');
+      return i >= 0 ? s.slice(0, i) : s;
+    }
+    function mmdd(at) {
+      var m = String(at || '').match(/^\d{4}-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?/);
+      return m ? m[1] + '/' + m[2] + (m[3] ? ' ' + m[3] : '') : String(at || '');
+    }
+    function aiState(t) {
+      var confirmedAt = String(t.aiConfirmedAt || ''), latestAt = String(t.aiLatestAt || ''), result = String(t.aiLatestResult || '');
+      var out = {
+        position: String(t.aiPosition || ''),
+        confirmed: !!confirmedAt,
+        stateText: confirmedAt ? '確認済み ' + mmdd(confirmedAt) : '日次で未確認',
+        latest: null
+      };
+      // 確認済みより新しい、確認済みでない取得があれば「最新取得（未確認）」として別に出す
+      if (latestAt && result && result.indexOf('確認済み') !== 0 && (!confirmedAt || latestAt > confirmedAt)) {
+        var i = result.indexOf('：');
+        out.latest = { at: latestAt, when: mmdd(latestAt), type: i >= 0 ? result.slice(0, i) : result, note: i >= 0 ? result.slice(i + 1) : '', position: String(t.aiLatestPosition || '') };
+      }
+      return out;
+    }
+
+    window.App = { showView: showView, showError: showError, clearError: clearError, callServer: callServer, aiState: aiState, shortPos: shortPos };
 
     window.addEventListener('error', function (e) { showError(e.message); });
     document.getElementById('error-close').addEventListener('click', clearError);

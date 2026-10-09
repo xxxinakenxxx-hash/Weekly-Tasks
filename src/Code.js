@@ -14,6 +14,12 @@ var DEFAULT_VIEW = 'weekly';
 
 function doGet(e) {
   try {
+    // 追加改修：案件キーの初期登録ページ（タブには出さない。URLに ?view=casekey を付けて開く）
+    if (e && e.parameter && e.parameter.view === 'casekey') {
+      var page = HtmlService.createTemplateFromFile('view_casekey');
+      page.appUrl = ScriptApp.getService().getUrl();
+      return page.evaluate().setTitle(APP_TITLE + '（案件キーの初期登録）').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
     var ctx = initApp_(e);
     var tpl = HtmlService.createTemplateFromFile('index');
     tpl.ctx = ctx;

@@ -11,6 +11,8 @@ var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 // 追加改修④：指示ルートも翌週へ引き継ぐ
 var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey'];
+// 追加改修③：持越し・次週候補の取り込みでは、現在地の確認日時と最新取得も写す（現在地の根拠を失わない）
+var CARRY_AI_STATE_KEYS = ['aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition'];
 // 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
 var CARRY_STATUSES = ['次週候補', '持越し'];
 // 手動タスク追加（追加実装 v1.2）で受け付ける項目。状態は既存の初期値「未着手」
@@ -98,7 +100,9 @@ function commitWeekBoard(targetWeek, payload) {
     if (errors.length) throw new Error(errors.join('\n'));
 
     creates.forEach(function (c) {
-      createTask_(Object.assign(pick_(c, BOARD_CREATE_KEYS), { targetWeek: targetWeek }));
+      var fields = Object.assign(pick_(c, BOARD_CREATE_KEYS), { targetWeek: targetWeek });
+      if (c.sourceTaskId) Object.assign(fields, carryAiState_(c.sourceTaskId));
+      createTask_(fields);
     });
     updates.forEach(function (u) {
       updateTask_(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS));
@@ -249,6 +253,15 @@ function getCarryCandidates(targetWeek) {
     });
   });
   return { targetWeek: targetWeek, fromWeek: prevWeek, candidates: candidates, excluded: excluded };
+}
+
+// 持越し元の現在地の確認日時・最新取得（正データから読む。画面から渡された値は使わない）
+function carryAiState_(sourceTaskId) {
+  var src = getTasksIncludingDeleted_().filter(function (t) { return t.taskId === sourceTaskId; })[0];
+  if (!src || src.kind !== 'AI案件') return {};
+  var out = {};
+  CARRY_AI_STATE_KEYS.forEach(function (k) { out[k] = src[k] === undefined ? '' : src[k]; });
+  return out;
 }
 
 // 持越し元タスクIDの検証（前の週に実在すること、同じ元からの二重取り込みでないこと）

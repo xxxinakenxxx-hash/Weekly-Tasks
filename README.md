@@ -8,8 +8,8 @@ CLAUDE.md               Claude Code向けの恒久ルール
 README.md               このファイル
 tasks/TASK_CURRENT.md   工程管理（現在工程）
 docs/official/          正本（統合企画書・案件概要書・機能仕様書・データ設計書 v1.7）
-docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1、追加実装指示書 v1.2、追加改修指示書（状態「保留」追加・指示ルート追加）v1.0）
-docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」18列＝IS-04で「持越し元タスクID」、IS-06で「削除済み」、追加改修④で「指示元」「実装先」「案件キー」を追加、「履歴」6列、「朝ブリーフ」8列）
+docs/implementation/    実装指示書（開発工程表＋テスト計画 v1.1、IS-00〜IS-06 v1.1、追加実装指示書 v1.2、追加改修指示書（状態「保留」追加・指示ルート追加・案件キー初期登録と現在地区別）v1.0）
+docs/DB_SCHEMA.md       Google Sheets 正データ定義（シート「タスク」22列＝IS-04で「持越し元タスクID」、IS-06で「削除済み」、追加改修④で「指示元」「実装先」「案件キー」、追加改修③で「現在地確認日時」「最新取得日時」「最新取得結果」「最新取得現在地」を追加、「履歴」6列、「朝ブリーフ」8列）
 docs/HANDOFF_FORMAT.md  ChatGPT Project分析結果の受け渡し形式（貼り付け方式・JSON）
 docs/OBSIDIAN_FORMAT.md 通常業務.md・AI案件.md の書式
 docs/BRIEF_FORMAT.md    朝ブリーフの受け渡し形式（朝情報.md＋AI案件_日次現在地.md → Project → 画面で保存。AI案件現在地はtaskIdで同期）

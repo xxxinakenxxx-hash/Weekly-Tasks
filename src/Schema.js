@@ -45,7 +45,13 @@ var SHEETS = {
       { key: 'instructFrom', header: '指示元' },
       { key: 'implementTo', header: '実装先' },
       // 追加改修④ 継続処理：AI案件の識別キー（AI案件.md に記載された TASK_CURRENT.md の場所）。同じキーの前の週の行から指示ルートを引き継ぐ
-      { key: 'caseKey', header: '案件キー' }
+      { key: 'caseKey', header: '案件キー' },
+      // 追加改修③ 現在地の区別：「AI案件現在地」が日次巡回で「確認済み」として更新された日時（空欄＝日次で未確認。週次分析などの値）
+      { key: 'aiConfirmedAt', header: '現在地確認日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm' },
+      // 日次AI現在地巡回の最新の取得事実（確認済み以外も記録する。「AI案件現在地」は確認済みのときだけ更新）
+      { key: 'aiLatestAt', header: '最新取得日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm' },
+      { key: 'aiLatestResult', header: '最新取得結果' },
+      { key: 'aiLatestPosition', header: '最新取得現在地' }
     ]
   },
   HISTORY: {

@@ -163,6 +163,19 @@
   .wk-route-arrow { color: var(--muted); }
   .wk-route-note { color: var(--muted); font-size: 11px; }
   .wk-casekey-input { width: 100%; box-sizing: border-box; font-size: 12px; }
+  .wk-card-posline { margin: 0 0 6px; font-size: 12px; color: #5a2a8a; line-height: 1.4; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .wk-card-posline .wk-card-pos { display: inline; margin: 0; }
+  .wk-pos-state { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 8px; font-size: 11px; white-space: nowrap; }
+  .wk-pos-state.is-ok { background: #e8f2e8; color: #2d6a2d; }
+  .wk-pos-state.is-unverified { background: #eeeeea; color: #666; }
+  .wk-card-latest, .br-task-latest { margin: 0; font-size: 12px; color: #8a5a00; overflow-wrap: anywhere; }
+  .br-task-latest { display: block; }
+  .br-task-posline { display: block; font-size: 12px; font-weight: normal; }
+  .br-task-posline .br-task-pos { display: inline; }
+  .wk-card-latest .wk-exc-tag, .br-task-latest .wk-exc-tag { margin-left: 4px; }
+  .wk-latest-label { color: var(--muted); }
+  .wk-ai-latest { font-size: 12px; color: #8a5a00; }
   .wk-add-open { white-space: nowrap; }
   .wk-add { border-color: var(--accent); }
   .wk-add input[type="text"], .wk-add textarea { width: 100%; box-sizing: border-box; font-size: 14px; }

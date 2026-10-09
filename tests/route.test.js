@@ -6,10 +6,10 @@ function t(name, fn) { try { fn(); pass++; console.log('PASS ' + name); } catch 
 const W = '2026-10-05', N = '2026-10-12';
 function setup() { const g = load(); g.setupSheets(); return g; }
 
-t('列：「タスク」は18列（16列目＝指示元、17列目＝実装先、18列目＝案件キー）。入力規則は付けない', () => {
+t('列：16列目＝指示元、17列目＝実装先、18列目＝案件キー。入力規則は付けない', () => {
   const g = setup();
   const h = g.__sheets['タスク'].data[0];
-  assert.strictEqual(h.length, 18);
+  assert.strictEqual(h.length, g.SHEETS.TASKS.columns.length);
   assert.deepStrictEqual([h[15], h[16], h[17]], ['指示元', '実装先', '案件キー']);
   assert.ok(!g.__sheets['タスク'].validations[16] && !g.__sheets['タスク'].validations[17] && !g.__sheets['タスク'].validations[18]);
 });
@@ -73,7 +73,7 @@ t('保留（①）は従来どおり取り込み候補に出ない（指示ル�
   assert.strictEqual(g.getCarryCandidates(N).candidates.length, 0);
   assert.strictEqual(g.getTasks(W)[0].status, '保留');
 });
-t('移行：既存15列の「タスク」に16〜18列目の見出しだけを追加し、既存の値・行は変えない', () => {
+t('移行：既存15列の「タスク」に16列目以降の見出しだけを追加し、既存の値・行は変えない', () => {
   const g = setup();
   const sh = g.__sheets['タスク'];
   const h15 = [...g.headersOf_(g.SHEETS.TASKS)].slice(0, 15);
@@ -81,7 +81,7 @@ t('移行：既存15列の「タスク」に16〜18列目の見出しだけを�
   sh.data = [h15.slice(), row.slice()];
   const before = JSON.stringify(sh.data[1]);
   const x = g.getTasks(W)[0];
-  assert.deepStrictEqual(sh.data[0].slice(15), ['指示元', '実装先', '案件キー']);
+  assert.deepStrictEqual(sh.data[0].slice(15), ['指示元', '実装先', '案件キー', '現在地確認日時', '最新取得日時', '最新取得結果', '最新取得現在地']);
   assert.strictEqual(JSON.stringify(sh.data[1].slice(0, 15)), before);
   assert.deepStrictEqual([x.instructFrom, x.implementTo, x.status, x.aiPosition], ['', '', '進行中', 'P1']);
   assert.strictEqual(g.getHistory().length, 0);

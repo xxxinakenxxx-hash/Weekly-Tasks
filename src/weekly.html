@@ -242,6 +242,16 @@
       return i >= 0 ? s.slice(0, i) : s;
     }
 
+    // 最新取得（未確認）の1行：「最新取得 10/09 06:15：（現在地）［チャット未確認］」
+    function latestLine(lt, cls) {
+      var p = el('p', cls);
+      p.appendChild(el('span', 'wk-latest-label', '最新取得 ' + lt.when + '：'));
+      p.appendChild(el('span', 'wk-latest-pos', lt.position ? shortPosition(lt.position) : '現在地なし'));
+      p.appendChild(el('span', 'wk-exc-tag', lt.type));
+      p.title = lt.type + (lt.note ? '：' + lt.note : '') + (lt.position ? '\n' + lt.position : '');
+      return p;
+    }
+
     // 指示ルート（追加改修④）：「指示元 → 実装先」。片方だけ空欄ならその側を「未設定」と表示する
     function routeText(t) {
       var from = String(t.instructFrom || '').trim(), to = String(t.implementTo || '').trim();
@@ -315,10 +325,18 @@
       c.appendChild(top);
 
       c.appendChild(el('p', 'wk-card-title', t.title));
-      if (t.aiPosition) {
-        var pos = el('p', 'wk-card-pos', '現在地：' + shortPosition(t.aiPosition));
-        pos.title = t.aiPosition;
-        c.appendChild(pos);
+      // 現在地（追加改修③）：確認済みか日次で未確認かを添え、確認済みより新しい未確認の取得は別の行に出す
+      if (t.kind === 'AI案件') {
+        var ai = App.aiState(t);
+        if (t.aiPosition) {
+          var pl = el('div', 'wk-card-posline');
+          var pos = el('span', 'wk-card-pos', '現在地：' + shortPosition(t.aiPosition));
+          pos.title = t.aiPosition;
+          pl.appendChild(el('span', 'wk-pos-state' + (ai.confirmed ? ' is-ok' : ' is-unverified'), ai.stateText));
+          pl.appendChild(pos);
+          c.appendChild(pl);
+        }
+        if (ai.latest) c.appendChild(latestLine(ai.latest, 'wk-card-latest'));
       }
       // 指示ルート（追加改修④）：AI案件だけに常時表示。空欄は「未設定」（推測で補わない）
       if (t.kind === 'AI案件') c.appendChild(routeLine(t));
@@ -422,7 +440,9 @@
         kl.appendChild(ki);
         d.appendChild(kl);
       }
-      if (t.aiPosition) d.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
+      if (t.aiPosition) d.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition + '（' + App.aiState(t).stateText + '）'));
+      var lt = t.kind === 'AI案件' ? App.aiState(t).latest : null;
+      if (lt) d.appendChild(el('p', 'wk-ai-latest', '最新取得 ' + lt.when + '（' + lt.type + (lt.note ? '：' + lt.note : '') + '）：' + (lt.position || '現在地なし') + '　※未確認のため「現在地」は更新していません'));
       if (t.exception) d.appendChild(exceptionBox(t.exception));
       if (t.isCandidate && t.handover) d.appendChild(el('p', 'wk-handover', '前週の申し送り：' + t.handover));
       if (!t.isCandidate) d.appendChild(historyViewer(t));

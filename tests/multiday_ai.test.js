@@ -78,18 +78,24 @@ t('同期：確認済み・taskId一致・当日取得の現在地だけをAI案
   const a = g.createTask({ targetWeek: W, title: '営業AIメモ', kind: 'AI案件', aiPosition: 'P2-08 途中', day: '月,火,水' });
   const r = g.saveMorningBrief(brief('2026-10-06', [ok(a.taskId, 'P2-08 §14-1 完了、§14-2 着手')]));
   assert.strictEqual(g.getTasks(W)[0].aiPosition, 'P2-08 §14-1 完了、§14-2 着手');
-  const h = g.getHistory(a.taskId).slice(-1)[0];
+  // 追加改修③：AI案件現在地の変更に加え、現在地確認日時・最新取得も履歴に残る
+  const h = g.getHistory(a.taskId).filter(x => x.field === 'AI案件現在地')[0];
   assert.deepStrictEqual([h.op, h.field, h.before, h.after], ['修正', 'AI案件現在地', 'P2-08 途中', 'P2-08 §14-1 完了、§14-2 着手']);
+  const x = g.getTasks(W)[0];
+  assert.deepStrictEqual([x.aiConfirmedAt, x.aiLatestAt, x.aiLatestResult, x.aiLatestPosition], ['2026-10-06 07:30', '2026-10-06 07:30', '確認済み', 'P2-08 §14-1 完了、§14-2 着手']);
   assert.deepStrictEqual([...r.aiSync.synced.map(x => x.taskId)], [a.taskId]);
   assert.strictEqual(g.getTasks().length, 1);
 });
-t('同期：要確認・不一致・取得失敗・チャット未確認は上書きしない（前回の確認済み現在地を保持）', () => {
+t('同期：要確認・不一致・取得失敗・チャット未確認は「AI案件現在地」を上書きしない（最新取得として区別して記録する。追加改修③）', () => {
   const g = setup();
   const ids = ['要確認', '不一致', '取得失敗', 'チャット未確認'].map((k, i) => g.createTask({ targetWeek: W, title: 'AI' + i, kind: 'AI案件', aiPosition: '前回' + i }).taskId);
   const r = g.saveMorningBrief(brief('2026-10-06', ['要確認', '不一致', '取得失敗', 'チャット未確認'].map((k, i) => ({ taskId: ids[i], title: 'AI' + i, result: k, position: '新しい値', at: '2026-10-06 07:30' }))));
   assert.deepStrictEqual(g.getTasks(W).map(x => x.aiPosition), ['前回0', '前回1', '前回2', '前回3']);
-  assert.strictEqual(r.aiSync.skipped.length, 4);
-  assert.ok(ids.every(id => g.getHistory(id).length === 1));
+  assert.deepStrictEqual(g.getTasks(W).map(x => x.aiConfirmedAt), ['', '', '', '']);
+  assert.deepStrictEqual(g.getTasks(W).map(x => x.aiLatestResult), ['要確認', '不一致', '取得失敗', 'チャット未確認']);
+  assert.strictEqual(r.aiSync.recorded.length, 4);
+  assert.strictEqual(r.aiSync.synced.length, 0);
+  assert.ok(ids.every(id => !g.getHistory(id).some(h => h.field === 'AI案件現在地')));
 });
 t('同期：taskIdがない・一致しない・別の週・AI案件以外は同期しない（タスク名では突き合わせない）', () => {
   const g = setup();
@@ -104,11 +110,15 @@ t('同期：taskIdがない・一致しない・別の週・AI案件以外は同
   assert.strictEqual(r.aiSync.synced.length, 0);
   assert.strictEqual(r.aiSync.skipped.length, 4);
 });
-t('同期：現在地が前回と同じなら書き換えず、履歴も増やさない', () => {
+t('同期：同じ取得内容を再保存しても書き換えず、履歴も増やさない', () => {
   const g = setup();
   const a = g.createTask({ targetWeek: W, title: 'AI', kind: 'AI案件', aiPosition: '同じ' });
+  const r1 = g.saveMorningBrief(brief('2026-10-06', [ok(a.taskId, '同じ')]));
+  assert.ok(!g.getHistory(a.taskId).some(h => h.field === 'AI案件現在地'));
+  assert.strictEqual(r1.aiSync.synced[0].positionChanged, false);
+  const n = g.getHistory(a.taskId).length;
   const r = g.saveMorningBrief(brief('2026-10-06', [ok(a.taskId, '同じ')]));
-  assert.strictEqual(g.getHistory(a.taskId).length, 1);
+  assert.strictEqual(g.getHistory(a.taskId).length, n);
   assert.deepStrictEqual([...r.aiSync.unchanged.map(x => x.taskId)], [a.taskId]);
 });
 t('同期：取得日時が当日でない（古い日次ファイル）場合は同期しない', () => {
