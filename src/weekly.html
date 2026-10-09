@@ -3,7 +3,7 @@
   (function () {
     var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
     var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception'];
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo'];
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
@@ -213,6 +213,20 @@
       return i >= 0 ? s.slice(0, i) : s;
     }
 
+    // 指示ルート（追加改修④）：「指示元 → 実装先」。片方だけ空欄ならその側を「未設定」と表示する
+    function routeText(t) {
+      var from = String(t.instructFrom || '').trim(), to = String(t.implementTo || '').trim();
+      if (!from && !to) return '未設定';
+      return (from || '未設定') + ' → ' + (to || '未設定');
+    }
+    function routeLine(t) {
+      var unset = !String(t.instructFrom || '').trim() && !String(t.implementTo || '').trim();
+      var p = el('p', 'wk-card-route' + (unset ? ' is-unset' : ''));
+      p.appendChild(el('span', 'wk-route-label', '指示ルート：'));
+      p.appendChild(el('span', 'wk-route-value', routeText(t)));
+      return p;
+    }
+
     // 一覧カード（IS-06 是正）：一覧ではタスク名・状態・優先度・重点・例外の有無だけを見せ、
     // 編集項目と詳細（現在地・例外の根拠・履歴など）は「詳細・編集」を開いたときに出す
     function card(t, colDay) {
@@ -237,6 +251,8 @@
         pos.title = t.aiPosition;
         c.appendChild(pos);
       }
+      // 指示ルート（追加改修④）：AI案件だけに常時表示。空欄は「未設定」（推測で補わない）
+      if (t.kind === 'AI案件') c.appendChild(routeLine(t));
       var meta = el('div', 'wk-card-meta');
       meta.appendChild(el('span', 'wk-status-pill st-' + STATUS.indexOf(t.status), t.status));
       meta.appendChild(el('span', 'wk-meta-item', t.priority === '' ? '優先度なし' : '優先' + t.priority));
@@ -315,6 +331,19 @@
       row.appendChild(focusLabel);
       d.appendChild(row);
 
+      // 指示ルートの編集（AI案件のみ。追加改修④）
+      if (t.kind === 'AI案件') {
+        var rt = el('div', 'wk-route-edit');
+        rt.appendChild(el('span', 'wk-days-label', '指示ルート（指示元 → 実装先。空欄は未設定）'));
+        [['instructFrom', '指示元'], ['implementTo', '実装先']].forEach(function (f, i) {
+          if (i === 1) rt.appendChild(el('span', 'wk-route-arrow', '→'));
+          var inp = el('input', 'wk-route-input');
+          inp.type = 'text'; inp.value = t[f[0]] || ''; inp.placeholder = f[1]; inp.setAttribute('aria-label', f[1]);
+          inp.addEventListener('change', function () { setField(t, f[0], inp.value.trim()); });
+          rt.appendChild(inp);
+        });
+        d.appendChild(rt);
+      }
       if (t.aiPosition) d.appendChild(el('p', 'wk-ai-position', '現在地：' + t.aiPosition));
       if (t.exception) d.appendChild(exceptionBox(t.exception));
       if (t.isCandidate && t.handover) d.appendChild(el('p', 'wk-handover', '前週の申し送り：' + t.handover));
@@ -536,7 +565,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', exceptionConfirmed: c.exceptionConfirmed === true };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', instructFrom: c.instructFrom || '', implementTo: c.implementTo || '', exceptionConfirmed: c.exceptionConfirmed === true };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};

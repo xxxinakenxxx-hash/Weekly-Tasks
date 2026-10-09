@@ -40,7 +40,10 @@ var SHEETS = {
       { key: 'aiPosition', header: 'AI案件現在地' },
       { key: 'sourceTaskId', header: '持越し元タスクID', text: true },
       // IS-06：削除済みの印（TRUE＝削除済み、空欄＝通常）。行は消さずに残す
-      { key: 'deleted', header: '削除済み' }
+      { key: 'deleted', header: '削除済み' },
+      // 追加改修④ 指示ルート：AI案件の「指示元 → 実装先」（自由記入。空欄＝未設定）
+      { key: 'instructFrom', header: '指示元' },
+      { key: 'implementTo', header: '実装先' }
     ]
   },
   HISTORY: {

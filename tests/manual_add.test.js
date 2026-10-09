@@ -50,7 +50,7 @@ t('入力規則・値を増やさない（状態・種別・操作区分・列�
   const before = JSON.stringify([g.STATUS_VALUES, g.KIND_VALUES, g.HISTORY_OPS, g.SHEETS.TASKS.columns.length]);
   g.addManualTask(W, { title: 'A', kind: 'AI案件', day: '月,火', aiPosition: 'IS-02 途中' });
   assert.strictEqual(JSON.stringify([g.STATUS_VALUES, g.KIND_VALUES, g.HISTORY_OPS, g.SHEETS.TASKS.columns.length]), before);
-  assert.strictEqual(g.__sheets['タスク'].data[0].length, 15);
+  assert.strictEqual(g.__sheets['タスク'].data[0].length, g.SHEETS.TASKS.columns.length);
 });
 t('AI案件：AI案件現在地を持てる。通常タスクでは持てない（何も書かない）', () => {
   const g = setup();
