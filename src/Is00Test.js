@@ -2,7 +2,7 @@
  * IS-00 実データ試験（Apps Script エディタから runIs00SheetTest を実行する）
  * 1. setupSheets で「タスク」「履歴」を用意（既存データは変更しない）
  * 2. DB_SCHEMA と実シートの一致確認
- * 3. 状態5値・履歴の保存／再読込
+ * 3. 状態（6値）・履歴の保存／再読込
  * 4. 試験で追加した行だけを削除し、試験前の行数に戻す
  */
 var IS00_TEST_WEEK = '2000-01-03';
@@ -36,7 +36,7 @@ function runIs00SheetTest() {
     updateTask(taskId, { memo: 'IS-00試験メモ' });
 
     var ops = getHistory(taskId).map(function (h) { return h.op + (h.field ? ':' + h.field : '') + (h.after !== '' ? '=' + h.after : ''); });
-    var expected = ['作成', '状態変更:状態=進行中', '状態変更:状態=完了', '状態変更:状態=次週候補', '状態変更:状態=持越し', '修正:メモ=IS-00試験メモ'];
+    var expected = ['作成', '状態変更:状態=進行中', '状態変更:状態=完了', '状態変更:状態=保留', '状態変更:状態=次週候補', '状態変更:状態=持越し', '修正:メモ=IS-00試験メモ'];
     check('履歴保存・再読込', ops.join('|') === expected.join('|'), ops);
     result.ok = true;
   } catch (e) {

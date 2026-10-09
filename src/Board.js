@@ -9,7 +9,7 @@ var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'resul
 var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId'];
-// 翌週へ展開する状態
+// 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
 var CARRY_STATUSES = ['次週候補', '持越し'];
 // 手動タスク追加（追加実装 v1.2）で受け付ける項目。状態は既存の初期値「未着手」
 var MANUAL_ADD_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'memo', 'aiPosition'];

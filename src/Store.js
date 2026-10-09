@@ -1,5 +1,5 @@
 /**
- * 正データ読み書き（IS-00：状態5値と履歴の保存／再読込）
+ * 正データ読み書き（IS-00：状態（6値。追加改修で「保留」を追加）と履歴の保存／再読込）
  * 既存データは上書き・削除しない。変更は必ず履歴シートへ記録する。
  */
 
@@ -26,6 +26,7 @@ function setupSheets() {
       if (def === SHEETS.TASKS) upgradeTasksHeader_(sheet);
       assertHeader_(sheet, def);
       if (def === SHEETS.TASKS) upgradeDayValidation_(sheet);
+      if (def === SHEETS.TASKS) upgradeStatusValidation_(sheet);
       if (def === SHEETS.HISTORY) upgradeHistoryOps_(sheet);
     }
   });
@@ -69,6 +70,18 @@ function upgradeDayValidation_(sheet) {
   if (values.indexOf('月' + DAY_SEPARATOR + '火') >= 0) return;
   sheet.getRange(2, col, sheet.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList(DAY_COMBOS, true).setAllowInvalid(false).build());
+}
+
+// 追加改修（保留）：「タスク」シートの「状態」列の入力規則に「保留」が無ければ、6値の一覧に更新する（規則の選択肢だけを更新。値・行は変更しない）
+function upgradeStatusValidation_(sheet) {
+  var col = SHEETS.TASKS.columns.map(function (c) { return c.key; }).indexOf('status') + 1;
+  if (sheet.getMaxRows() < 2) return;
+  var rule = sheet.getRange(2, col).getDataValidation();
+  if (!rule) return;
+  var values = rule.getCriteriaValues()[0] || [];
+  if (values.indexOf('保留') >= 0) return;
+  sheet.getRange(2, col, sheet.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(STATUS_VALUES, true).setAllowInvalid(false).build());
 }
 
 /**
@@ -232,6 +245,7 @@ function createTask_(input, historyField) {
   var task = prepareCreate_(input);
   var sheet = tasksSheet_();
   if (task.day.indexOf(DAY_SEPARATOR) >= 0) upgradeDayValidation_(sheet);
+  if (task.status === '保留') upgradeStatusValidation_(sheet);
   appendObj_(sheet, SHEETS.TASKS, task);
   appendHistory_([{ taskId: task.taskId, op: '作成', field: historyField || '', before: '', after: '' }]);
   return task;
@@ -250,6 +264,7 @@ function updateTask_(taskId, changes) {
   var plan = prepareUpdate_(taskId, changes);
   var sheet = tasksSheet_();
   if (String(plan.next.day).indexOf(DAY_SEPARATOR) >= 0 && plan.next.day !== plan.current.day) upgradeDayValidation_(sheet);
+  if (plan.next.status === '保留' && plan.current.status !== '保留') upgradeStatusValidation_(sheet);
   var history = [];
   SHEETS.TASKS.columns.forEach(function (c, i) {
     if (String(plan.current[c.key]) === String(plan.next[c.key])) return;
