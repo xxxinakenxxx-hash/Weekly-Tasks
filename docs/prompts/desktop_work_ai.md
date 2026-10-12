@@ -13,10 +13,11 @@ AI開発案件の現在地を巡回し、Google Drive「週間タスクボード
 1A. 上の検索とは別に、次の「Claude Code案件」も1案件として扱う（ローカルの Documents 配下には無く、GitHub 上にある。ログイン不要で読める）。
    - 案件名：週間タスク・朝ブリーフ
    - TASK_CURRENT.md の場所（案件キーとしてそのまま書く）：https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md
-   - 読む場所：TASK_CURRENT.md＝https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/HEAD/tasks/TASK_CURRENT.md、正本＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/official、実装指示書＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/implementation、開発履歴＝https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/HEAD
+   - 読む場所：下の判定基準 D の経路（1つ目で読めなくても、ほかの経路で読み直す）
    - Codexチャットは使っていない案件のため、Codexチャットは「対象外（Claude Code案件）」と書く。開発履歴（最新のコミット）を代わりの情報源として照らし合わせる。
    - 同じ案件を Documents 配下でも見つけた場合も1案件として扱い、上の場所を使う。
 2. 案件ごとに次を読む。
+   - 前回の結果（判定基準 B）：保存する前の既存の AI案件.md と AI案件_日次現在地.md
    - その案件の TASK_CURRENT.md
    - Google Drive 上のその案件の正本・開発工程表・実装指示書・関連資料（1Aの案件は、GitHub 上の正本・実装指示書）
    - Codexチャット（タスク一覧・アーカイブ一覧・各スレッド本文 read_thread）
@@ -30,7 +31,10 @@ AI開発案件の現在地を巡回し、Google Drive「週間タスクボード
 巡回フォルダ：C:\Users\inamori240\Documents
 
 ## 1. 案件名
-- 台帳の最新記録日：（今の現在地として採った記録の日付 yyyy-MM-dd と見出し）
+- 台帳の最新記録日：（現在地の根拠とした記載の日付 yyyy-MM-dd。冒頭の欄に日付が無い場合は「冒頭の欄（日付なし）」と書き、台帳で確認できる直近の記録の日付を添える）
+- 現在地の根拠：（台帳のどの欄・記録を採ったか。冒頭の欄が未更新の場合はその旨）
+- 前回の現在地：（前回の結果の現在地と、その結果の日付）
+- 前回からの変化：変更なし／前進（根拠）／要確認（理由）
 - 現在工程：
 - 工程状態：途中／完了
 - 完了内容：
@@ -47,21 +51,40 @@ AI開発案件の現在地を巡回し、Google Drive「週間タスクボード
   - 開発履歴：（Claude Code案件だけ。読んだコミット履歴の場所と最新コミットの日時・内容）
 - 不一致の内容：（情報源整合が「不一致」の場合だけ）
 
-現在地の決め方と判定（2026-10-11 ユーザー決定。すべての案件に同じ決まりを使う）：
-- TASK_CURRENT.md の中で、日付（yyyy-MM-dd など）のある記録のうち、いちばん新しい記録を今の現在地とする。「現在地」「現在工程」などの見出しの欄でも、日付が古い記載や日付のない記載は、今の現在地として採らない。
-- 台帳の中に、いちばん新しい記録と食い違う古い記載が残っている場合は、台帳を書き換えず、要確認欄に「台帳内に古い記載（見出し・要点）が残る」とだけ書く。古い記載は「不一致」の理由にしない。
-- Drive資料・Codexチャット・開発履歴が、いちばん新しい記録より前の時点の内容なら、食い違っても「不一致」にしない（いちばん新しい記録を採る）。要確認欄に「（資料名）は（その時点）の内容」と書く。
-- 「不一致」にするのは、いちばん新しい記録と同じ時点、またはそれより新しい資料が、別の内容を示している場合だけ。何と何が食い違うかを書く。
-- いちばん新しい記録とDrive資料が一致している（またはDrive資料が古いだけの）場合、対応するCodexチャットを特定できなくても「情報源整合：一致」とし、要確認欄に「チャット未確認」と書く。
-- 日付のある記録が無い場合は推測せず「要確認」、台帳を読めない場合は「取得失敗：TASK_CURRENT.md」と書く。
-- 各案件に「台帳の最新記録日」（採った記録の日付と見出し）を必ず書く。
-
-前回とのつながり（継続性）：
-- Google Drive「週間タスクボード」フォルダ直下の「AI案件_日次現在地.md」（直近の日次巡回の結果）も読み、同じ案件（TASK_CURRENT.md の場所が同じもの）の「台帳の最新記録日」と比べる。今回の記録日のほうが古い場合は、台帳を読み直す。それでも古い場合は、今回の内容を書いたうえで、要確認欄に「直近の日次巡回（日付）の記録日（…）より古い」と書く。
+判定基準（週次・日次共通。2026-10-12 改訂。週次の AI案件.md と日次の AI案件_日次現在地.md は、必ずこの同じ基準で判定する）：
+A. 現在地の決め方
+  - TASK_CURRENT.md 冒頭（最初の見出し群）にある「現在工程」「現在地」「状態」などの欄を最優先で現在地とする。欄に日付が無くても採る。
+  - 冒頭の欄の内容と、本文の直近の実装・試験・完了の記録を合わせて判断する。冒頭の欄より後の工程に進んだことを示す記録（実装・試験・完了）がある場合だけ、その記録を採り、根拠欄に「冒頭の欄が未更新」と書く。
+  - 本文の日付付きの過去の記録（作業ログ）だけを根拠に、冒頭の欄より前の工程へ戻さない。
+  - 冒頭に現在地の欄が無い場合だけ、本文の直近の記録から判断する。判断できなければ推測せず「要確認」。
+B. 前回の現在地との照合
+  - 保存する前に、前回の結果（週次＝上書きする前の AI案件.md、日次＝上書きする前の AI案件_日次現在地.md）と、もう一方の直近の結果（週次は AI案件_日次現在地.md、日次は AI案件.md）を読み、同じ案件キーの「現在地」と比べる。
+  - 前回と同じなら「前回からの変化：変更なし」。前回より後の工程なら「前進」とし、根拠（台帳のどの記載か）を書く。
+  - 前回より前の工程になる場合は、根拠が台帳の冒頭の欄で前の工程に戻したと明記されているときだけ採る（根拠を書く）。そうでなければ今回の判断を採らず、前回の現在地を書いたうえで「前回からの変化：要確認（前回より前の工程の記載あり：その記載）」とする。
+C. 判定の区別（結果は次の4つのどれかに分ける）
+  - 実際の矛盾：採った現在地と、同じ時点かそれより新しい資料（Drive の正本・工程表・指示書、Codexチャット、開発履歴）が、別の工程・別の方式を示している。→「不一致」。何と何が食い違うかを書く。
+  - 古い記録・古い資料：台帳の過去の記録や、採った現在地より前の時点の資料と違うだけ。→ 不一致にしない。注記だけ書く（例：「Drive の工程表は Phase 1 時点」）。
+  - チャット未確認：対応する Codexチャットを特定できない。台帳と Drive に実際の矛盾が無ければ「確認済み」（週次は「情報源整合：一致」）とし、注記に「チャット未確認」と書く。
+  - 取得失敗：下の D のすべての経路で読めなかった情報源がある。→「取得失敗：情報源と経路ごとのエラー」。推測で補わない。
+D. GitHub（Claude Code案件）の読み方
+  - TASK_CURRENT.md は、次の順に読めるまで試す。1つ目で読めなくても取得失敗にしない。
+    ① https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md
+    ② https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md?plain=1
+    ③ https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/HEAD/tasks/TASK_CURRENT.md
+    ④ https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/refs/heads/claude/gallant-dijkstra-m5gen1/tasks/TASK_CURRENT.md
+  - 開発履歴は ⑤ https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/HEAD 、読めなければ ⑥ https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/claude/gallant-dijkstra-m5gen1.atom 。正本・実装指示書は https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/official と /docs/implementation。
+  - 読めた経路を「確認元」に書く。すべて失敗した場合だけ、経路ごとのエラーを書いて「取得失敗」とする。
+E. 対象と案件キー（変えない）
+  - 対象は次の5案件。案件キー（TASK_CURRENT.md の場所）は一字も変えずに書く。
+    ・機械売上管理システム：C:\Users\inamori240\Documents\machine-sales-system\tasks\TASK_CURRENT.md
+    ・機械販売事例アプリ：C:\Users\inamori240\Documents\機械販売事例アプリ\tasks\TASK_CURRENT.md
+    ・営業AIメモ：C:\Users\inamori240\Documents\営業AIメモ\tasks\TASK_CURRENT.md
+    ・管理職AIメモ：C:\Users\inamori240\Documents\管理職AIメモ\tasks\TASK_CURRENT.md
+    ・週間タスク・朝ブリーフ：https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md
 
 ルール：
 - Drive資料だけで最新と判断しない。TASK_CURRENT.md にない内容を推測で補わない。
-- 案件に対応するCodexチャットを特定できない場合は推測で紐付けず「チャット未確認」と書く（Claude Code案件は「対象外（Claude Code案件）」）。
-- GitHub 上の場所を読めなかった場合は推測で補わず「取得失敗：（場所）」と書く。
+- 案件に対応するCodexチャットを特定できない場合は推測で紐付けず、要確認欄に「チャット未確認」と書く（判定基準 C。実際の矛盾が無ければ情報源整合は「一致」。Claude Code案件は「対象外（Claude Code案件）」）。
+- GitHub 上の場所は判定基準 D のすべての経路を試し、それでも読めなかった場合だけ、推測で補わず「取得失敗：（場所と経路ごとのエラー）」と書く。
 - 保存後、ファイル名・保存先・案件数・不一致の件数・チャット未確認の件数を報告する。
 ```
