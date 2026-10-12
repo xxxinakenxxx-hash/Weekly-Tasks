@@ -101,5 +101,13 @@ SCENARIOS.forEach(sc => t('10/12 回帰（' + sc.case + '）：' + sc.bad + ' �
   assert.ok(weekly.includes(sc.rule) && daily.includes(sc.rule), sc.rule);
 }));
 
+// ---- 2026-10-12 ユーザー決定：週間分析を取り直したら、今週すでにあるAI案件も必ず案に出す（表の現在地を直すため） ----
+t('週間分析の指示文：AI案件は今週すでに行があっても必ず案に出す（通常タスクだけ再生成しない）', () => {
+  const wa = block(read('docs/prompts/project_weekly_analysis.md'));
+  assert.ok(wa.includes('これと同じ通常タスクはタスク案に出さない'));
+  assert.ok(wa.includes('AI案件.md の案件は、対象週に同じ案件の行がすでにあっても、必ずすべてタスク案に出す'));
+  assert.ok(wa.includes('タスク名は対象週のその行と同じ名前にし、案件キーを必ず書く'));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
