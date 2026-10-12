@@ -26,7 +26,40 @@ var MANUAL_ADD_FIELD = '手動追加';
 function getWeekBoard(targetWeek) {
   var week = targetWeek || currentWeek_();
   assertWeek_(week);
-  return { targetWeek: week, tasks: getTasks(week), loadedAt: nowText_() };
+  return { targetWeek: week, tasks: getTasks(week), analysis: getWeekAnalysis_(week), loadedAt: nowText_() };
+}
+
+// 対象週の週間分析（見立て・コーション）。保存した最新の行。無ければ null（2026-10-12）
+function getWeekAnalysis_(week) {
+  var sheet = openSpreadsheet_().getSheetByName(SHEETS.ANALYSIS.name);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  assertHeader_(sheet, SHEETS.ANALYSIS);
+  var found = null;
+  readAll_(sheet, SHEETS.ANALYSIS).forEach(function (r) { if (String(r.targetWeek) === week) found = r; });
+  if (!found) return null;
+  return { outlook: String(found.outlook), cautions: String(found.cautions) === '' ? [] : String(found.cautions).split('\n'), savedAt: String(found.savedAt) };
+}
+
+function analysisSheet_() {
+  var ss = openSpreadsheet_();
+  var sheet = ss.getSheetByName(SHEETS.ANALYSIS.name);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEETS.ANALYSIS.name);
+    writeHeader_(sheet, SHEETS.ANALYSIS);
+  } else if (sheet.getLastRow() === 0) {
+    writeHeader_(sheet, SHEETS.ANALYSIS);
+  } else {
+    assertHeader_(sheet, SHEETS.ANALYSIS);
+  }
+  return sheet;
+}
+
+// 保存する週間分析の検証（見立て＝文字列、コーション＝文字列の配列。改行は1項目の中に入れない）
+function normalizeAnalysis_(a) {
+  if (!a || typeof a !== 'object') throw new Error('週間分析の形式が不正です。');
+  if (typeof a.outlook !== 'string') throw new Error('週間分析の「見立て」は文字列です。');
+  if (!Array.isArray(a.cautions)) throw new Error('週間分析の「コーション」は配列です。');
+  return { outlook: a.outlook, cautions: a.cautions.map(function (c) { return String(c).replace(/\r?\n/g, ' '); }) };
 }
 
 /** タスク1件の変更履歴（古い順）。根拠・状態・時点の追跡用（IS-05） */
@@ -72,7 +105,8 @@ function commitWeekBoard(targetWeek, payload) {
   payload = payload || {};
   var creates = payload.creates || [];
   var refreshes = payload.refreshes || [];
-  if (!creates.length && !(payload.updates || []).length && !refreshes.length) throw new Error('確定する変更がありません。');
+  var analysis = payload.analysis ? normalizeAnalysis_(payload.analysis) : null;
+  if (!creates.length && !(payload.updates || []).length && !refreshes.length && !analysis) throw new Error('確定する変更がありません。');
   return withLock_(function () {
     // 追加改修④ 継続処理：案件キーのある新しいAI案件で、指示ルートが空欄なら前の週の同じ案件から引き継ぐ
     var inherited = applyCaseRoutes_(targetWeek, creates);
@@ -139,7 +173,10 @@ function commitWeekBoard(targetWeek, payload) {
     updates.forEach(function (u) {
       updateTask_(u.taskId, u.changes);
     });
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, refreshed: refreshes.length, routeInherited: inherited, loadedAt: nowText_() };
+    if (analysis) {
+      appendObj_(analysisSheet_(), SHEETS.ANALYSIS, { targetWeek: targetWeek, savedAt: nowText_(), outlook: analysis.outlook, cautions: analysis.cautions.join('\n') });
+    }
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), analysis: getWeekAnalysis_(targetWeek), analysisSaved: !!analysis, created: creates.length, updated: updates.length, refreshed: refreshes.length, routeInherited: inherited, loadedAt: nowText_() };
   });
 }
 

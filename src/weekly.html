@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], refresh: {}, analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, routeOther: {}, dragKey: null, dragFrom: '', loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], refresh: {}, analysis: null, analysisDirty: false, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, routeOther: {}, dragKey: null, dragFrom: '', loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -112,7 +112,9 @@
       if (data['対象週'] !== state.week) {
         throw new Error('分析結果の対象週（' + data['対象週'] + '）が表示中の週（' + state.week + '）と違います。');
       }
-      state.analysis = { outlook: data['見立て'], cautions: data['コーション'] };
+      // 見立て・コーションは「確定して保存」で「週間分析」シートに残す（2026-10-12：再読込で消えないように）
+      state.analysis = { outlook: data['見立て'], cautions: data['コーション'].map(String) };
+      state.analysisDirty = true;
       // 対象週の保存済みタスクとタスク名が完全一致する案は候補にしない（類似判定はしない）。
       // ただし今週すでにあるAI案件（案件キーが同じ。案件キーが無ければタスク名が同じ）は、除外せず
       // 「分析結果で更新」として、AI案件現在地・例外情報・案件キーを読み込んだ分析結果に差し替える（2026-10-12。保存は「確定して保存」）
@@ -625,9 +627,16 @@
       if (state.analysis) {
         $('wk-outlook').textContent = state.analysis.outlook;
         $('wk-outlook').className = '';
+        $('wk-outlook-saved').textContent = state.analysisDirty ? '読み込んだ分析結果（未保存。「確定して保存」で保存されます）' : '保存済み（' + state.analysis.savedAt + '）';
+        $('wk-outlook-saved').hidden = false;
         var ul = $('wk-cautions'); ul.innerHTML = '';
         state.analysis.cautions.forEach(function (c) { ul.appendChild(el('li', '', String(c))); });
         if (!state.analysis.cautions.length) ul.appendChild(el('li', 'wk-muted', 'なし'));
+      } else {
+        $('wk-outlook').textContent = 'ChatGPT Project の分析結果は未読込です。';
+        $('wk-outlook').className = 'wk-muted';
+        $('wk-outlook-saved').hidden = true;
+        $('wk-cautions').innerHTML = '<li class="wk-muted">未読込</li>';
       }
 
       // 重点
@@ -655,11 +664,11 @@
       });
 
       // 確定欄
-      var n = state.candidates.length, m = changedCount();
+      var n = state.candidates.length, m = changedCount(), a = state.analysisDirty;
       var waiting = unconfirmed().length;
-      $('wk-pending').textContent = ((n || m) ? '未確定の変更：候補 ' + n + '件・変更 ' + m + '件' : '未確定の変更はありません') +
+      $('wk-pending').textContent = ((n || m || a) ? '未確定の変更：候補 ' + n + '件・変更 ' + m + '件' + (a ? '・今週の要点（未保存）' : '') : '未確定の変更はありません') +
         (waiting ? '。確認待ちの候補が ' + waiting + '件あります（カードのチェックを入れてください）' : '');
-      $('wk-commit').disabled = !(n || m) || waiting > 0;
+      $('wk-commit').disabled = !(n || m || a) || waiting > 0;
     }
 
     // ---- サーバー連携 ----
@@ -680,6 +689,9 @@
         state.edits = {};
         state.refresh = {};
         state.routeOther = {};
+        // 保存済みの見立て・コーション（無ければ未読込）
+        state.analysis = res.analysis || null;
+        state.analysisDirty = false;
         $('wk-loading').hidden = true;
         $('wk-board').hidden = false;
         showLoaded(res.loadedAt);
@@ -701,19 +713,15 @@
         }
       });
     }
-    function hasPending() { return state.candidates.length > 0 || changedCount() > 0; }
+    function hasPending() { return state.candidates.length > 0 || changedCount() > 0 || state.analysisDirty; }
     function moveWeek(n) {
       if (hasPending() && !window.confirm('未確定の変更があります。破棄して移動しますか？')) return;
       state.candidates = [];
       state.refresh = {};
       showExcluded([]);
-      if (n !== 0) {
-        // 週を移動したら分析結果の表示も消す（再読込では残す）
-        state.analysis = null;
-        $('wk-outlook').textContent = 'ChatGPT Project の分析結果は未読込です。';
-        $('wk-outlook').className = 'wk-muted';
-        $('wk-cautions').innerHTML = '<li class="wk-muted">未読込</li>';
-      }
+      // 見立て・コーションは読み込み時に「週間分析」シートの保存済みの内容を表示する
+      state.analysis = null;
+      state.analysisDirty = false;
       load(addDays(state.week, n));
     }
     function commit() {
@@ -728,19 +736,22 @@
       var refreshes = Object.keys(state.refresh).map(function (id) {
         return { taskId: id, changes: state.refresh[id].changes, exceptionConfirmed: state.refresh[id].exceptionConfirmed === true };
       });
-      var msg = '次の内容で確定し、保存します。\n候補の採用：' + creates.length + '件\n分析結果で更新：' + refreshes.length + '件\n既存タスクの変更：' + updates.length + '件';
+      var analysis = state.analysisDirty && state.analysis ? { outlook: state.analysis.outlook, cautions: state.analysis.cautions } : null;
+      var msg = '次の内容で確定し、保存します。\n候補の採用：' + creates.length + '件\n分析結果で更新：' + refreshes.length + '件\n既存タスクの変更：' + updates.length + '件' + (analysis ? '\n今週の要点・コーション：保存する' : '');
       if (!window.confirm(msg)) return;
       $('wk-commit').disabled = true;
-      App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates, refreshes: refreshes }], function (res) {
+      App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates, refreshes: refreshes, analysis: analysis }], function (res) {
         state.saved = res.tasks;
         state.edits = {};
         state.refresh = {};
+        state.analysis = res.analysis || null;
+        state.analysisDirty = false;
         state.routeOther = {};
         state.candidates = [];
         showLoaded(res.loadedAt);
         render();
         var s = $('wk-saved');
-        s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件' + (res.refreshed ? '（うち分析結果で更新 ' + res.refreshed + '件）' : '') + '）。正データを再読込して表示しています。';
+        s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件' + (res.refreshed ? '（うち分析結果で更新 ' + res.refreshed + '件）' : '') + (res.analysisSaved ? '・今週の要点を保存' : '') + '）。正データを再読込して表示しています。';
         s.hidden = false;
       }, function () { render(); });
     }

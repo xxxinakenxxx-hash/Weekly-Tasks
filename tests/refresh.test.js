@@ -82,5 +82,36 @@ t('分析結果で更新：案件キーが今週の別のAI案件と重なる場
   const b = g.createTask({ targetWeek: W, title: '別AI', kind: 'AI案件', caseKey: 'C:\\x\\TASK_CURRENT.md' });
   assert.throws(() => g.commitWeekBoard(W, { refreshes: [{ taskId: b.taskId, changes: { caseKey: K } }] }), /同じ案件キー/);
 });
+// ---- 2026-10-12：週間分析の見立て・コーションを保存し、再読込しても消えない ----
+t('見立て・コーション：確定して保存で「週間分析」シートに残り、週間ボードの読み込みで返る', () => {
+  const { g } = setup();
+  assert.strictEqual(g.getWeekBoard(W).analysis, null);
+  const res = g.commitWeekBoard(W, { analysis: { outlook: '今週はIS-06の確認が中心', cautions: ['期限接近：A', '要確認：B'] } });
+  assert.strictEqual(res.analysisSaved, true);
+  const a = g.getWeekBoard(W).analysis;
+  assert.strictEqual(a.outlook, '今週はIS-06の確認が中心');
+  assert.strictEqual(JSON.stringify(a.cautions), JSON.stringify(['期限接近：A', '要確認：B']));
+  assert.ok(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(a.savedAt), a.savedAt);
+});
+t('見立て・コーション：同じ週で保存し直すと新しい内容を返す（行は追記）。別の週には出ない', () => {
+  const { g } = setup();
+  g.commitWeekBoard(W, { analysis: { outlook: '1回目', cautions: [] } });
+  g.commitWeekBoard(W, { analysis: { outlook: '2回目', cautions: ['x'] } });
+  assert.strictEqual(g.getWeekBoard(W).analysis.outlook, '2回目');
+  assert.strictEqual(g.__sheets['週間分析'].data.length, 3);
+  assert.strictEqual(g.getWeekBoard('2026-10-05').analysis, null);
+});
+t('見立て・コーション：タスクの保存と一緒に1回で保存できる。タスク・履歴の内容は変えない', () => {
+  const { g, a } = setup();
+  g.commitWeekBoard(W, { analysis: { outlook: 'o', cautions: ['c'] }, refreshes: [{ taskId: a.taskId, changes: { aiPosition: '新', exception: '' } }] });
+  assert.strictEqual(row(g, a.taskId).aiPosition, '新');
+  assert.strictEqual(g.getWeekBoard(W).analysis.outlook, 'o');
+});
+t('見立て・コーション：形式が違えば何も書かない', () => {
+  const { g } = setup();
+  assert.throws(() => g.commitWeekBoard(W, { analysis: { outlook: 1, cautions: [] } }), /見立て/);
+  assert.throws(() => g.commitWeekBoard(W, { analysis: { outlook: 'o', cautions: 'x' } }), /コーション/);
+  assert.strictEqual(g.getWeekBoard(W).analysis, null);
+});
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

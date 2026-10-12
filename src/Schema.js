@@ -77,11 +77,23 @@ var SHEETS = {
       { key: 'done', header: 'もう片づいていること' },
       { key: 'carryover', header: '未完了・持越し' }
     ]
+  },
+  // 2026-10-12：週間分析（ChatGPT Project）の「見立て」「コーション」を週ごとに残す（再読込で消えないように）。
+  // 追記のみ（同じ週で保存し直した場合は新しい行を足し、表示は最新行）
+  ANALYSIS: {
+    name: '週間分析',
+    columns: [
+      { key: 'targetWeek', header: '対象週', text: true, dateFormat: 'yyyy-MM-dd' },
+      { key: 'savedAt', header: '保存日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm:ss' },
+      { key: 'outlook', header: '見立て' },
+      { key: 'cautions', header: 'コーション' }
+    ]
   }
 };
 
 // 正データとして管理するシート（setupSheets・checkSchema の対象）
 var ALL_SHEETS = [SHEETS.TASKS, SHEETS.HISTORY, SHEETS.BRIEF];
+// 「週間分析」シートは、週間画面で初めて見立て・コーションを保存するときに作る（setupSheets では作らない。既存シートは変更しない）
 
 function headersOf_(def) {
   return def.columns.map(function (c) { return c.header; });
