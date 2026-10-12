@@ -35,7 +35,7 @@ t('日次：案件キーが一致しない・別の週・削除済みの行に�
   const d = g.createTask({ targetWeek: W, title: 'D', kind: 'AI案件', caseKey: KA, aiPosition: '削除' });
   g.deleteTask(W, d.taskId);
   const r = g.saveMorningBrief(brief(D, [item({ caseKey: KA, position: '新' })]));
-  assert.ok(/一致する行がない/.test(r.aiSync.skipped[0].reason));
+  assert.ok(/削除済み/.test(r.aiSync.skipped[0].reason));
   assert.deepStrictEqual([task(g, a.taskId).aiPosition, task(g, p.taskId).aiPosition, task(g, d.taskId).aiPosition], ['前', '前週', '削除']);
 });
 t('日次：案件キーとtaskIdが別の行を指す場合は、どちらにも書かない', () => {
@@ -213,6 +213,70 @@ t('Claude Code案件：既存のローカル4案件の案件キー・指示ル�
   const before = JSON.stringify(g.CASE_KEY_BACKFILL.items.map(it => [task(g, it.taskId).caseKey, task(g, it.taskId).instructFrom, task(g, it.taskId).implementTo]));
   g.commitWeekBoard(W, { creates: [{ title: '週間タスク・朝ブリーフ', kind: 'AI案件', caseKey: KC }] });
   assert.strictEqual(JSON.stringify(g.CASE_KEY_BACKFILL.items.map(it => [task(g, it.taskId).caseKey, task(g, it.taskId).instructFrom, task(g, it.taskId).implementTo])), before);
+});
+
+// ---- 継続性：月曜（週間分析の確定前）の日次結果を失わない ----
+const MON = '2026-10-12';
+t('月曜：今週の行がまだ無いときは、同じ案件キーの前の週の行に記録する（どの週に記録したかを返す）', () => {
+  const g = setup();
+  const a = g.createTask({ targetWeek: W, title: '管理職AIメモ', kind: 'AI案件', caseKey: KB, aiPosition: 'IS-13 途中' });
+  const r = g.saveMorningBrief(brief(MON, [item({ caseKey: KB, result: 'チャット未確認', position: 'IS-13 停止中', at: MON + ' 06:15', note: 'Codexタスク特定できず' })]));
+  const x = task(g, a.taskId);
+  assert.deepStrictEqual([x.aiPosition, x.aiLatestAt, x.aiLatestResult, x.aiLatestPosition], ['IS-13 途中', MON + ' 06:15', 'チャット未確認：Codexタスク特定できず', 'IS-13 停止中']);
+  assert.strictEqual(r.aiSync.recorded[0].savedToWeek, W);
+});
+t('月曜：その後の週間分析の確定で、月曜朝に確認済みになった現在地（週次より新しい）を今週の新しい行に採る', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: '管理職AIメモ', kind: 'AI案件', caseKey: KB, aiPosition: 'IS-13 途中' });
+  g.saveMorningBrief(brief(MON, [item({ caseKey: KB, position: 'IS-13 停止中', at: MON + ' 06:15' })]));
+  g.commitWeekBoard(N, { creates: [{ title: '管理職AIメモ', kind: 'AI案件', caseKey: KB, aiPosition: '週次の値（IS-02 完了）' }] });
+  const n = g.getTasks(N)[0];
+  assert.deepStrictEqual([n.aiPosition, n.aiConfirmedAt, n.aiLatestAt, n.aiLatestResult, n.aiLatestPosition], ['IS-13 停止中', MON + ' 06:15', MON + ' 06:15', '確認済み', 'IS-13 停止中']);
+});
+t('月曜：月曜朝の結果が未確認なら、週間分析の現在地を採り、未確認の最新取得を写す（確認日時は空欄）', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: '管理職AIメモ', kind: 'AI案件', caseKey: KB, aiPosition: 'IS-13 途中' });
+  g.saveMorningBrief(brief(MON, [item({ caseKey: KB, result: 'チャット未確認', position: 'IS-13 停止中', at: MON + ' 06:15' })]));
+  g.commitWeekBoard(N, { creates: [{ title: '管理職AIメモ', kind: 'AI案件', caseKey: KB, aiPosition: '週次の値' }] });
+  const n = g.getTasks(N)[0];
+  assert.deepStrictEqual([n.aiPosition, n.aiConfirmedAt, n.aiLatestResult, n.aiLatestPosition], ['週次の値', '', 'チャット未確認', 'IS-13 停止中']);
+});
+t('前の週の確認済み（先週の日付）は、週間分析の新しい値より優先しない', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'A', kind: 'AI案件', caseKey: KA });
+  g.saveMorningBrief(brief(D, [item({ caseKey: KA, position: '先週金曜の確認' })]));
+  g.commitWeekBoard(N, { creates: [{ title: 'A', kind: 'AI案件', caseKey: KA, aiPosition: '週次の新しい値' }] });
+  const n = g.getTasks(N)[0];
+  assert.deepStrictEqual([n.aiPosition, n.aiConfirmedAt, n.aiLatestPosition], ['週次の新しい値', '', '先週金曜の確認']);
+});
+t('月曜：週間分析の現在地が前の週の確認済み現在地と同じなら、確認日時も写す。空欄なら前の週の現在地と確認日時を写す', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'A', kind: 'AI案件', caseKey: KA });
+  g.createTask({ targetWeek: W, title: 'B', kind: 'AI案件', caseKey: KB });
+  g.saveMorningBrief(brief(MON, [item({ caseKey: KA, position: '確認A', at: MON + ' 06:15' }), item({ caseKey: KB, position: '確認B', at: MON + ' 06:15' })]));
+  g.commitWeekBoard(N, { creates: [{ title: 'A', kind: 'AI案件', caseKey: KA, aiPosition: '確認A' }, { title: 'B', kind: 'AI案件', caseKey: KB }] });
+  const a = g.getTasks(N).find(x => x.title === 'A'), b = g.getTasks(N).find(x => x.title === 'B');
+  assert.deepStrictEqual([a.aiPosition, a.aiConfirmedAt], ['確認A', MON + ' 06:15']);
+  assert.deepStrictEqual([b.aiPosition, b.aiConfirmedAt], ['確認B', MON + ' 06:15']);
+});
+t('月曜：週間分析の確定後に保存した朝ブリーフは、今週の行に記録する（前の週の行は変えない）', () => {
+  const g = setup();
+  const a = g.createTask({ targetWeek: W, title: 'A', kind: 'AI案件', caseKey: KA, aiPosition: '前週' });
+  g.commitWeekBoard(N, { creates: [{ title: 'A', kind: 'AI案件', caseKey: KA, aiPosition: '週次' }] });
+  const r = g.saveMorningBrief(brief(MON, [item({ caseKey: KA, position: '日次', at: MON + ' 06:15' })]));
+  assert.strictEqual(g.getTasks(N)[0].aiPosition, '日次');
+  assert.strictEqual(task(g, a.taskId).aiPosition, '前週');
+  assert.ok(!r.aiSync.synced[0].savedToWeek);
+});
+t('月曜：前の週に同じ案件キーの行が複数ある・taskIdだけの項目は、前の週へは記録しない', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'A1', kind: 'AI案件', caseKey: KA });
+  g.createTask({ targetWeek: W, title: 'A2', kind: 'AI案件', caseKey: KA.toLowerCase() });
+  const b = g.createTask({ targetWeek: W, title: 'B', kind: 'AI案件' });
+  const r = g.saveMorningBrief(brief(MON, [item({ caseKey: KA, at: MON + ' 06:15' }), item({ taskId: b.taskId, at: MON + ' 06:15' })]));
+  assert.ok(/複数/.test(r.aiSync.skipped[0].reason));
+  assert.ok(/taskIdが一致しない/.test(r.aiSync.skipped[1].reason));
+  assert.strictEqual(g.getHistory().filter(h => /最新取得|AI案件現在地/.test(h.field)).length, 0);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -99,9 +99,14 @@ function commitWeekBoard(targetWeek, payload) {
     errors = errors.concat(findDuplicateCaseKeys_(getTasks(targetWeek), creates, updates));
     if (errors.length) throw new Error(errors.join('\n'));
 
+    var allForCase = null;
     creates.forEach(function (c) {
       var fields = Object.assign(pick_(c, BOARD_CREATE_KEYS), { targetWeek: targetWeek });
       if (c.sourceTaskId) Object.assign(fields, carryAiState_(c.sourceTaskId));
+      else if (c.kind === 'AI案件' && String(c.caseKey || '').trim()) {
+        if (!allForCase) allForCase = getTasks();
+        Object.assign(fields, caseAiState_(allForCase, targetWeek, fields));
+      }
       createTask_(fields);
     });
     updates.forEach(function (u) {
@@ -261,6 +266,40 @@ function carryAiState_(sourceTaskId) {
   if (!src || src.kind !== 'AI案件') return {};
   var out = {};
   CARRY_AI_STATE_KEYS.forEach(function (k) { out[k] = src[k] === undefined ? '' : src[k]; });
+  return out;
+}
+
+/**
+ * 同じ案件キーの、対象週より前でいちばん新しい週の行（削除済みを除くAI案件）。その週に複数ある場合は ambiguous（どれとも決めない）
+ */
+function latestCaseRow_(all, targetWeek, key) {
+  var nk = caseKeyNorm_(key);
+  if (!nk) return { row: null };
+  var rows = all.filter(function (t) { return t.kind === 'AI案件' && caseKeyNorm_(t.caseKey) === nk && String(t.targetWeek) < String(targetWeek); });
+  if (!rows.length) return { row: null };
+  var latest = rows.reduce(function (m, t) { return String(t.targetWeek) > m ? String(t.targetWeek) : m; }, '');
+  var same = rows.filter(function (t) { return String(t.targetWeek) === latest; });
+  return same.length === 1 ? { row: same[0] } : { row: null, ambiguous: true };
+}
+
+/**
+ * 追加改修（継続性）：週間分析などで新しく作るAI案件（持越しではない、案件キーあり）に、前の週の同じ案件の現在地の記録を引き継ぐ。
+ * - 最新取得（日時・結果・現在地）は写す（月曜の日次巡回が前の週の行に記録した結果も、ここで今週の行へ移る）
+ * - 前の週の行の「現在地確認日時」が対象週の月曜以降（＝月曜朝の日次巡回で確認済み。週次巡回より新しい）なら、
+ *   いちばん新しい確認済みの現在地として「AI案件現在地」と「現在地確認日時」を写す（週間分析の値より優先。2026-10-11 ユーザー決定「最新でいい」）
+ * - 新しい行の「AI案件現在地」が空欄なら、前の週の「AI案件現在地」と「現在地確認日時」を写す
+ * - 新しい行の「AI案件現在地」が前の週と同じなら「現在地確認日時」を写す。違う値（週次巡回の新しい値）なら写さない（日次で未確認）
+ */
+function caseAiState_(all, targetWeek, fields) {
+  var prev = latestCaseRow_(all, targetWeek, fields.caseKey).row;
+  if (!prev) return {};
+  var out = {};
+  ['aiLatestAt', 'aiLatestResult', 'aiLatestPosition'].forEach(function (k) { if (String(prev[k] || '') !== '') out[k] = prev[k]; });
+  var pos = String(fields.aiPosition || '').trim();
+  if (prev.aiConfirmedAt && String(prev.aiConfirmedAt).slice(0, 10) >= String(targetWeek) && String(prev.aiPosition || '') !== '') {
+    out.aiPosition = prev.aiPosition; out.aiConfirmedAt = prev.aiConfirmedAt;
+  } else if (!pos && String(prev.aiPosition || '') !== '') { out.aiPosition = prev.aiPosition; if (prev.aiConfirmedAt) out.aiConfirmedAt = prev.aiConfirmedAt; }
+  else if (pos && pos === String(prev.aiPosition || '').trim() && prev.aiConfirmedAt) out.aiConfirmedAt = prev.aiConfirmedAt;
   return out;
 }
 

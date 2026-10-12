@@ -64,11 +64,22 @@ function planAiSync_(date, items) {
   items.forEach(function (it) {
     var label = it.title || it.taskId || it.caseKey || '（名前なし）';
     var skip = function (reason) { out.skipped.push({ taskId: it.taskId, title: label, result: it.result, reason: reason }); };
-    var t = null;
+    var t = null, prevWeek = '';
     if (it.caseKey) {
       var nk = caseKeyNorm_(it.caseKey);
       var hits = weekTasks.filter(function (x) { return x.kind === 'AI案件' && caseKeyNorm_(x.caseKey) === nk; });
-      if (!hits.length) return skip('今週のAI案件に案件キーが一致する行がないため同期しない');
+      // 今週にその案件キーの行を削除した記録がある場合は、前の週へは記録しない（ユーザーが今週から外した案件）
+      var removed = !hits.length && getTasksIncludingDeleted_(week).some(function (x) { return x.deleted === true && x.kind === 'AI案件' && caseKeyNorm_(x.caseKey) === nk; });
+      if (removed) return skip('今週の同じ案件キーの行は削除済みのため同期しない');
+      if (!hits.length) {
+        // 追加改修（継続性）：今週の行がまだ無い（月曜、週間分析の確定前など）ときは、同じ案件キーのいちばん新しい前の週の行に記録する。
+        // 週間分析を確定すると、その記録は今週の新しい行へ写る（commitWeekBoard）。その週に同じ案件キーの行が複数ある場合は記録しない
+        var prev = latestCaseRow_(getTasks(), week, it.caseKey);
+        if (prev.ambiguous) return skip('前の週に案件キーが一致する行が複数あるため同期しない');
+        if (!prev.row) return skip('今週・前の週のAI案件に案件キーが一致する行がないため同期しない');
+        hits = [prev.row];
+        prevWeek = String(prev.row.targetWeek);
+      }
       if (hits.length > 1) return skip('案件キーが一致する行が複数あるため同期しない');
       t = hits[0];
       if (it.taskId && it.taskId !== t.taskId) return skip('案件キーとtaskIdが別の行を指しているため同期しない');
@@ -93,8 +104,9 @@ function planAiSync_(date, items) {
     if (!Object.keys(diff).length) { out.unchanged.push({ taskId: t.taskId, title: label, result: it.result }); return; }
     prepareUpdate_(t.taskId, diff);
     out.writes.push({ taskId: t.taskId, changes: diff });
-    if (it.result === '確認済み') out.synced.push({ taskId: t.taskId, title: label, position: it.position, at: at, positionChanged: diff.aiPosition !== undefined });
-    else out.recorded.push({ taskId: t.taskId, title: label, result: it.result, position: it.position, at: at, note: it.note });
+    var where = prevWeek ? { savedToWeek: prevWeek } : {};
+    if (it.result === '確認済み') out.synced.push(Object.assign({ taskId: t.taskId, title: label, position: it.position, at: at, positionChanged: diff.aiPosition !== undefined }, where));
+    else out.recorded.push(Object.assign({ taskId: t.taskId, title: label, result: it.result, position: it.position, at: at, note: it.note }, where));
   });
   return out;
 }
