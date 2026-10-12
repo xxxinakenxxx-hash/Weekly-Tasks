@@ -7,7 +7,7 @@
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
-    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, routeOther: {}, dragKey: null, dragFrom: '', loadedAt: '' };
+    var state = { week: APP_CTX.currentWeek, saved: [], edits: {}, candidates: [], refresh: {}, analysis: null, seq: 0, openRecords: {}, openHistory: {}, openDetails: {}, routeOther: {}, dragKey: null, dragFrom: '', loadedAt: '' };
 
     function $(id) { return document.getElementById(id); }
     function el(tag, cls, text) {
@@ -113,15 +113,30 @@
         throw new Error('分析結果の対象週（' + data['対象週'] + '）が表示中の週（' + state.week + '）と違います。');
       }
       state.analysis = { outlook: data['見立て'], cautions: data['コーション'] };
-      // 対象週の保存済みタスクとタスク名が完全一致する案は候補にしない（類似判定はしない）
+      // 対象週の保存済みタスクとタスク名が完全一致する案は候補にしない（類似判定はしない）。
+      // ただし今週すでにあるAI案件（案件キーが同じ。案件キーが無ければタスク名が同じ）は、除外せず
+      // 「分析結果で更新」として、AI案件現在地・例外情報・案件キーを読み込んだ分析結果に差し替える（2026-10-12。保存は「確定して保存」）
       var savedTitles = state.saved.map(function (t) { return String(t.title); });
-      var excluded = [];
+      var excluded = [], refreshed = [];
+      state.refresh = {};
       var proposals = data['タスク案'].filter(function (t) {
+        var hit = refreshTarget(t);
+        if (hit) {
+          var ch = {};
+          [['aiPosition', 'AI案件現在地'], ['exception', '例外情報'], ['caseKey', '案件キー']].forEach(function (f) {
+            var v = String(t[f[1]] || '').trim();
+            if (f[0] === 'caseKey' && !v) return;
+            if (v !== String(hit[f[0]] || '').trim()) ch[f[0]] = v;
+          });
+          if (Object.keys(ch).length) { state.refresh[hit.taskId] = { changes: ch, exceptionConfirmed: false }; refreshed.push(hit.title); }
+          else excluded.push(String(t['タスク名']) + '（内容に変わりなし）');
+          return false;
+        }
         if (savedTitles.indexOf(String(t['タスク名'])) < 0) return true;
         excluded.push(String(t['タスク名']));
         return false;
       });
-      showExcluded(excluded);
+      showExcluded(excluded, refreshed);
       state.candidates = proposals.map(function (t) {
         return {
           key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: parseDays(t['曜日']) || '',
@@ -155,20 +170,40 @@
       });
     }
 
-    function showExcluded(titles) {
+    function showExcluded(titles, refreshed) {
+      refreshed = refreshed || [];
       var p = $('wk-import-excluded');
-      p.hidden = !titles.length;
-      p.textContent = titles.length ? '既存タスクと同名のため候補から除外：' + titles.length + '件（' + titles.join('、') + '）' : '';
+      var msgs = [];
+      if (refreshed.length) msgs.push('今週のAI案件を分析結果で更新（「確定して保存」で保存）：' + refreshed.length + '件（' + refreshed.join('、') + '）');
+      if (titles.length) msgs.push('既存タスクと同名のため候補から除外：' + titles.length + '件（' + titles.join('、') + '）');
+      p.hidden = !msgs.length;
+      p.textContent = msgs.join('。');
+    }
+    // 読み込んだAI案件の案が、今週の保存済みのどのAI案件にあたるか（案件キーが同じ。案件キーが無ければタスク名が同じ）
+    function caseKeyNorm(v) { return String(v || '').trim().replace(/\//g, '\\').toLowerCase(); }
+    function refreshTarget(t) {
+      if (t['種別'] !== 'AI案件') return null;
+      var ai = state.saved.filter(function (x) { return x.kind === 'AI案件'; });
+      var key = caseKeyNorm(t['案件キー']);
+      var hits = key ? ai.filter(function (x) { return caseKeyNorm(x.caseKey) === key; }) : [];
+      if (!hits.length) hits = ai.filter(function (x) { return String(x.title) === String(t['タスク名']) && (!key || !caseKeyNorm(x.caseKey)); });
+      return hits.length === 1 ? hits[0] : null;
+    }
+    function refreshNeedsConfirm(id) {
+      var r = state.refresh[id];
+      return !!r && r.changes.exception !== undefined && needsConfirm({ exception: r.changes.exception });
     }
 
     // ---- 表示用データ ----
     function viewTask(t) {
       var e = state.edits[t.taskId] || {};
+      var r = state.refresh[t.taskId] ? state.refresh[t.taskId].changes : {};
       var v = {};
-      Object.keys(t).forEach(function (k) { v[k] = e.hasOwnProperty(k) ? e[k] : t[k]; });
+      Object.keys(t).forEach(function (k) { v[k] = e.hasOwnProperty(k) ? e[k] : r.hasOwnProperty(k) ? r[k] : t[k]; });
       v.key = t.taskId;
       v.isCandidate = false;
-      v.changed = Object.keys(e).length > 0;
+      v.refreshed = !!state.refresh[t.taskId];
+      v.changed = Object.keys(e).length > 0 || v.refreshed;
       return v;
     }
     function allTasks() {
@@ -179,8 +214,15 @@
         return pa - pb;
       });
     }
-    function changedCount() { return Object.keys(state.edits).length; }
-    function unconfirmed() { return state.candidates.filter(function (c) { return needsConfirm(c) && c.exceptionConfirmed !== true; }); }
+    function changedCount() {
+      var ids = Object.keys(state.edits);
+      Object.keys(state.refresh).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+      return ids.length;
+    }
+    function unconfirmed() {
+      return state.candidates.filter(function (c) { return needsConfirm(c) && c.exceptionConfirmed !== true; })
+        .concat(Object.keys(state.refresh).filter(function (id) { return refreshNeedsConfirm(id) && state.refresh[id].exceptionConfirmed !== true; }));
+    }
 
     // ---- 編集 ----
     function setField(task, key, value) {
@@ -314,6 +356,7 @@
       var top = el('div', 'wk-card-top');
       top.appendChild(el('span', 'wk-tag ' + (t.kind === 'AI案件' ? 'tag-ai' : 'tag-normal'), t.kind));
       if (t.isCandidate) top.appendChild(el('span', 'wk-badge', '候補'));
+      else if (t.refreshed) top.appendChild(el('span', 'wk-badge is-changed', '分析結果で更新'));
       else if (t.changed) top.appendChild(el('span', 'wk-badge is-changed', '変更あり'));
       if (t.sourceTaskId) top.appendChild(el('span', 'wk-badge is-carry', t.isCandidate ? '前週から（' + (t.sourceStatus || '持越し') + '）' : '持越し'));
       if (daysOf(t.day).length > 1) top.appendChild(el('span', 'wk-badge is-multi', daysOf(t.day).join('・')));
@@ -354,6 +397,15 @@
         cl.appendChild(cb);
         cl.appendChild(document.createTextNode(exceptionTypes(t.exception).filter(function (x) { return CONFIRM_REQUIRED.indexOf(x) >= 0; }).join('・') + 'の内容を確認した（根拠は「詳細・編集」で確認。チェックするまで保存できません）'));
         c.appendChild(cl);
+      }
+      if (t.refreshed && refreshNeedsConfirm(t.key)) {
+        var rf = state.refresh[t.key];
+        var rl = el('label', 'wk-confirm' + (rf.exceptionConfirmed ? ' is-done' : ''));
+        var rcb = el('input'); rcb.type = 'checkbox'; rcb.checked = rf.exceptionConfirmed === true;
+        rcb.addEventListener('change', function () { rf.exceptionConfirmed = rcb.checked; render(); });
+        rl.appendChild(rcb);
+        rl.appendChild(document.createTextNode(exceptionTypes(t.exception).filter(function (x) { return CONFIRM_REQUIRED.indexOf(x) >= 0; }).join('・') + 'の内容を確認した（根拠は「詳細・編集」で確認。チェックするまで保存できません）'));
+        c.appendChild(rl);
       }
       if (!t.isCandidate) c.appendChild(recordEditor(t));
       c.appendChild(detailPanel(t));
@@ -626,6 +678,7 @@
         state.week = res.targetWeek;
         state.saved = res.tasks;
         state.edits = {};
+        state.refresh = {};
         state.routeOther = {};
         $('wk-loading').hidden = true;
         $('wk-board').hidden = false;
@@ -652,6 +705,7 @@
     function moveWeek(n) {
       if (hasPending() && !window.confirm('未確定の変更があります。破棄して移動しますか？')) return;
       state.candidates = [];
+      state.refresh = {};
       showExcluded([]);
       if (n !== 0) {
         // 週を移動したら分析結果の表示も消す（再読込では残す）
@@ -671,18 +725,22 @@
         EDIT_KEYS.forEach(function (k) { if (state.edits[id].hasOwnProperty(k)) ch[k] = state.edits[id][k]; });
         return { taskId: id, changes: ch };
       });
-      var msg = '次の内容で確定し、保存します。\n候補の採用：' + creates.length + '件\n既存タスクの変更：' + updates.length + '件';
+      var refreshes = Object.keys(state.refresh).map(function (id) {
+        return { taskId: id, changes: state.refresh[id].changes, exceptionConfirmed: state.refresh[id].exceptionConfirmed === true };
+      });
+      var msg = '次の内容で確定し、保存します。\n候補の採用：' + creates.length + '件\n分析結果で更新：' + refreshes.length + '件\n既存タスクの変更：' + updates.length + '件';
       if (!window.confirm(msg)) return;
       $('wk-commit').disabled = true;
-      App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates }], function (res) {
+      App.callServer('commitWeekBoard', [state.week, { creates: creates, updates: updates, refreshes: refreshes }], function (res) {
         state.saved = res.tasks;
         state.edits = {};
+        state.refresh = {};
         state.routeOther = {};
         state.candidates = [];
         showLoaded(res.loadedAt);
         render();
         var s = $('wk-saved');
-        s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件）。正データを再読込して表示しています。';
+        s.textContent = '保存しました（追加 ' + res.created + '件・変更 ' + res.updated + '件' + (res.refreshed ? '（うち分析結果で更新 ' + res.refreshed + '件）' : '') + '）。正データを再読込して表示しています。';
         s.hidden = false;
       }, function () { render(); });
     }

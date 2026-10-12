@@ -15,6 +15,8 @@ var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 
 var CARRY_AI_STATE_KEYS = ['aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition'];
 // 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
 var CARRY_STATUSES = ['次週候補', '持越し'];
+// 週間分析の読み込み直し（2026-10-12）：今週すでにあるAI案件の行を、読み込んだ分析結果で更新できる項目
+var BOARD_REFRESH_KEYS = ['aiPosition', 'exception', 'caseKey'];
 // 手動タスク追加（追加実装 v1.2）で受け付ける項目。状態は既存の初期値「未着手」
 var MANUAL_ADD_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'memo', 'aiPosition'];
 // 手動追加の履歴：既存の操作区分「作成」に、この項目名で記録する（操作区分の値は増やさない）
@@ -60,17 +62,42 @@ function nowText_() {
  * payload.creates：採用する候補の配列。payload.updates：[{ taskId, changes }] の配列。
  * すべて検証してから書き込む（途中で失敗したら1件も書かない）。
  */
+/*
+ * payload.refreshes（2026-10-12）：[{ taskId, changes, exceptionConfirmed }]。週間分析を読み込み直したとき、
+ *   今週すでにあるAI案件の行の「AI案件現在地」「例外情報」「案件キー」を分析結果で更新する。
+ *   現在地が変わる場合は、新しい現在地はまだ日次で確認されていないため「現在地確認日時」を空欄にする。
+ */
 function commitWeekBoard(targetWeek, payload) {
   assertWeek_(targetWeek);
   payload = payload || {};
   var creates = payload.creates || [];
-  var updates = payload.updates || [];
-  if (!creates.length && !updates.length) throw new Error('確定する変更がありません。');
+  var refreshes = payload.refreshes || [];
+  if (!creates.length && !(payload.updates || []).length && !refreshes.length) throw new Error('確定する変更がありません。');
   return withLock_(function () {
     // 追加改修④ 継続処理：案件キーのある新しいAI案件で、指示ルートが空欄なら前の週の同じ案件から引き継ぐ
     var inherited = applyCaseRoutes_(targetWeek, creates);
-    var weekIds = getTasks(targetWeek).map(function (t) { return t.taskId; });
+    var weekTasks = getTasks(targetWeek);
+    var weekIds = weekTasks.map(function (t) { return t.taskId; });
     var errors = [];
+    // 分析結果による更新と画面での変更を、タスクごとに1件の変更へまとめる（画面での変更を後に重ねる）
+    var merged = {}, order = [];
+    var mergeInto = function (id, ch) {
+      if (!merged[id]) { merged[id] = {}; order.push(id); }
+      Object.assign(merged[id], ch);
+    };
+    refreshes.forEach(function (r, i) {
+      var t = weekTasks.filter(function (x) { return x.taskId === r.taskId; })[0];
+      var label = '分析結果による更新' + (i + 1) + '件目「' + (t ? t.title : r.taskId) + '」：';
+      if (!t) { errors.push(label + '対象週のタスクではありません。'); return; }
+      if (t.kind !== 'AI案件') { errors.push(label + 'AI案件だけ更新できます。'); return; }
+      var ch = pick_(r.changes || {}, BOARD_REFRESH_KEYS);
+      var needs = exceptionTypesOf_(ch.exception).filter(function (x) { return CONFIRM_REQUIRED_EXCEPTIONS.indexOf(x) >= 0; });
+      if (needs.length && r.exceptionConfirmed !== true) errors.push(label + needs.join('・') + 'があるため、内容を確認してから保存してください。');
+      if (ch.aiPosition !== undefined && String(ch.aiPosition).trim() !== String(t.aiPosition || '').trim()) ch.aiConfirmedAt = '';
+      mergeInto(t.taskId, ch);
+    });
+    (payload.updates || []).forEach(function (u) { mergeInto(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS)); });
+    var updates = order.map(function (id) { return { taskId: id, changes: merged[id] }; });
     creates.forEach(function (c, i) {
       // 不一致・チャット未確認の候補は、画面で個別に「確認した」ものだけ保存する（自動確定しない）
       var needs = exceptionTypesOf_(c.exception).filter(function (x) { return CONFIRM_REQUIRED_EXCEPTIONS.indexOf(x) >= 0; });
@@ -86,7 +113,7 @@ function commitWeekBoard(targetWeek, payload) {
     updates.forEach(function (u) {
       try {
         if (weekIds.indexOf(u.taskId) < 0) throw new Error('対象週のタスクではありません。');
-        prepareUpdate_(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS));
+        prepareUpdate_(u.taskId, u.changes);
       } catch (e) {
         errors.push('変更「' + u.taskId + '」：' + e.message);
       }
@@ -110,9 +137,9 @@ function commitWeekBoard(targetWeek, payload) {
       createTask_(fields);
     });
     updates.forEach(function (u) {
-      updateTask_(u.taskId, pick_(u.changes || {}, BOARD_EDITABLE_KEYS));
+      updateTask_(u.taskId, u.changes);
     });
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, routeInherited: inherited, loadedAt: nowText_() };
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), created: creates.length, updated: updates.length, refreshed: refreshes.length, routeInherited: inherited, loadedAt: nowText_() };
   });
 }
 
