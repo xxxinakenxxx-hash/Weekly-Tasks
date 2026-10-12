@@ -20,6 +20,12 @@ function doGet(e) {
       page.appUrl = ScriptApp.getService().getUrl();
       return page.evaluate().setTitle(APP_TITLE + '（案件キーの初期登録）').addMetaTag('viewport', 'width=device-width, initial-scale=1');
     }
+    // 操作マニュアル（2026-10-12：Driveのファイルから移す。付録の指示文は docs/prompts と同じ。URLに ?view=manual を付けて開く）
+    if (e && e.parameter && e.parameter.view === 'manual') {
+      var manual = HtmlService.createTemplateFromFile('view_manual');
+      manual.appUrl = ScriptApp.getService().getUrl();
+      return manual.evaluate().setTitle(APP_TITLE + '（操作マニュアル）').addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
     var ctx = initApp_(e);
     var tpl = HtmlService.createTemplateFromFile('index');
     tpl.ctx = ctx;

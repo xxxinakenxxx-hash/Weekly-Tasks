@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; background: #f5f6f4; color: #202a30; font-family: Arial, "Yu Gothic", "Meiryo", sans-serif; line-height: 1.75; font-size: 16px; }
+    main { max-width: 980px; margin: 24px auto; padding: 32px 44px; background: #fff; border: 1px solid #d9dedd; border-radius: 12px; }
+    h1 { font-size: 1.6rem; color: #18364a; border-bottom: 2px solid #d9dedd; padding-bottom: .5rem; margin: 0 0 1rem; }
+    h2 { font-size: 1.3rem; color: #18364a; border-bottom: 1px solid #d9dedd; margin: 2.2rem 0 .7rem; padding-bottom: .2rem; }
+    h3 { font-size: 1.05rem; color: #18364a; margin: 1.4rem 0 .4rem; }
+    p, li { margin: .4rem 0; }
+    ol, ul { padding-left: 1.6rem; }
+    table { border-collapse: collapse; width: 100%; margin: .8rem 0 1.2rem; font-size: .95rem; }
+    th, td { border: 1px solid #d9dedd; padding: .55rem .7rem; text-align: left; vertical-align: top; }
+    th { background: #edf2f4; color: #18364a; }
+    .note { background: #f5f8fa; border-left: 3px solid #326e9c; padding: .5rem 1rem; margin: .8rem 0; }
+    .appendix-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .copy-btn { font-size: 15px; padding: 8px 16px; border-radius: 8px; border: 1px solid #2f6fb3; background: #2f6fb3; color: #fff; cursor: pointer; }
+    .copy-done { color: #2d6a2d; font-weight: bold; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f5f7f8; padding: 1rem; border: 1px solid #d9dedd; border-radius: 6px; line-height: 1.55; font-size: 14px; }
+    a { color: #155f8b; overflow-wrap: anywhere; }
+    @media (max-width: 700px) { main { margin: 0; padding: 20px 16px; border: 0; border-radius: 0; } body { font-size: 15px; } table { font-size: .85rem; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>週間タスク・朝ブリーフ ユーザー操作マニュアル</h1>
+  <p>この手順で、週のタスクを登録し、平日の朝ブリーフを保存します。ChatGPT に貼る文は、このページの付録A〜Cの「コピー」ボタンでコピーしてください（付録の文は、いつも最新のものです）。</p>
+  <p>週間タスク画面：<a href="<?= appUrl ?>" target="_top"><?= appUrl ?></a></p>
+
+  <h2>実施するタイミング</h2>
+  <table>
+    <tr><th>いつ</th><th>あなたがすること</th></tr>
+    <tr><td>毎週月曜 5:45</td><td>Desktop版WorkのAI案件の週次巡回は自動です。何もしません。</td></tr>
+    <tr><td>毎週月曜、業務開始後</td><td>「毎週月曜に行う操作」の1〜4を行います。</td></tr>
+    <tr><td>平日 6:15・6:30 の自動処理後</td><td>Desktop版Work（AI案件の日次巡回）とWeb版Work（朝情報）は自動です。そのあと「毎朝に行う操作」の1〜3を行います。</td></tr>
+  </table>
+  <p class="note">画面表示や通知で自動処理が失敗したと分かった場合は、JSONの作成・保存へ進まず、そのままの状態で連絡してください。</p>
+
+  <h2>毎週月曜に行う操作</h2>
+  <h3>1. Web版Workで通常業務を集める</h3>
+  <p>ブラウザで https://chatgpt.com/ を開き、Web版Workを選んで新しいチャットを開きます。付録Aをコピーして貼り付け、送信します。</p>
+  <h3>2. 週間タスクのJSONを作る</h3>
+  <p>ChatGPT のプロジェクト「週間タスク」で新しいチャットを作ります。付録Bをコピーして貼り付け、送信します。返ってきた JSON（<code>{</code> から <code>}</code> まで）を全部コピーします。</p>
+  <h3>3. 週間タスク画面へ読み込む</h3>
+  <p>週間タスク画面を開き、「ChatGPT Project の分析結果を読み込む」を開きます。JSONを貼り付けて「読み込む」を押します。</p>
+  <h3>4. 内容を確認して保存する</h3>
+  <ul>
+    <li>新しいタスクは「候補」として出ます。</li>
+    <li>今週の表にすでにあるAI案件は「分析結果で更新」と出ます。保存すると、現在地と例外情報が新しい内容に変わります（内容が同じなら「内容に変わりなし」）。</li>
+    <li>不一致・チャット未確認のカードは、内容を確かめてカードの確認欄にチェックを入れます。</li>
+    <li>「確定して保存」を押します。今週の要点・コーションも一緒に保存され、再読込しても消えません。</li>
+  </ul>
+  <p class="note">AI案件の巡回をやり直したときも、2〜4をやり直せば今週の表が新しい内容に直ります。</p>
+
+  <h2>毎朝に行う操作（月〜金）</h2>
+  <h3>1. 朝ブリーフのJSONを作る</h3>
+  <p>プロジェクト「週間タスク」で新しいチャットを作ります。付録Cをコピーして貼り付け、送信します。返ってきた JSON を全部コピーします。</p>
+  <h3>2. 朝ブリーフ画面へ読み込む</h3>
+  <p>画面上部の「朝ブリーフ」タブを押し、「ChatGPT Project の朝ブリーフを読み込む」を開きます。JSONを貼り付けて「読み込む」を押します。</p>
+  <h3>3. 内容を確認して保存する</h3>
+  <p>日付、今日の予定、今日やること、重要な注意、AI案件現在地を確かめて「保存」を押します。保存すると、確認できたAI案件の現在地が今週の表にも入ります（週間タスク画面のカードに「確認済み 日時」と出ます）。</p>
+
+  <h2>日中にタスクの結果を記録する</h2>
+  <p>朝ブリーフ画面の「今週のタスク」で記録するタスク名を押し、「状態」「曜日」「実施結果」「メモ」「次回申し送り」を入れて「この内容で保存」を押します。週間タスク画面では「✎ 記録」から入力し、「確定して保存」を押します。</p>
+
+  <h2>AIが拾わなかったタスクを追加する</h2>
+  <p>週間タスク画面で「＋ タスク追加」を押します。タスク名・種別・曜日・優先度・重点・メモを入れて「追加して保存」を押します。</p>
+
+  <h2>止める条件</h2>
+  <ul>
+    <li>Workが保存できなかった、またはJSONの作成で資料の取得失敗が出た。</li>
+    <li>週間タスクJSONの対象週が今週と違う。</li>
+    <li>JSONを「読み込む」で受け付けない、または画面にエラーが出る。</li>
+    <li>保存後に「保存しました」と出ない。</li>
+  </ul>
+  <p>この場合は保存を繰り返さず、エラーの表示を残して連絡してください。</p>
+
+  <h2 class="appendix-head">付録A　通常業務を集める指示文 <button type="button" class="copy-btn" data-copy="appendix-a">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>毎週月曜、Web版Workの新しいチャットへ送ります。</p>
+<pre id="appendix-a">{{A}}</pre>
+
+  <h2 class="appendix-head">付録B　週間タスクを作る指示文 <button type="button" class="copy-btn" data-copy="appendix-b">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>付録Aの処理後、プロジェクト「週間タスク」の新しいチャットへ送ります。</p>
+<pre id="appendix-b">{{B}}</pre>
+
+  <h2 class="appendix-head">付録C　朝ブリーフを作る指示文 <button type="button" class="copy-btn" data-copy="appendix-c">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>平日の自動処理後、プロジェクト「週間タスク」の新しいチャットへ送ります。</p>
+<pre id="appendix-c">{{C}}</pre>
+</main>
+<script>
+  // 付録の「コピー」：付録の文を全部コピーする（使えない環境では文を選択状態にする）
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pre = document.getElementById(btn.getAttribute('data-copy'));
+      var done = btn.parentNode.querySelector('.copy-done');
+      var show = function () { done.hidden = false; setTimeout(function () { done.hidden = true; }, 3000); };
+      var select = function () {
+        var r = document.createRange(); r.selectNodeContents(pre);
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        try { if (document.execCommand('copy')) show(); } catch (e) {}
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(pre.textContent).then(show, select);
+      else select();
+    });
+  });
+</script>
+</body>
+</html>

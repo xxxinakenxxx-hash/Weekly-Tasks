@@ -51,3 +51,5 @@
 - Google Sheetsの正データを破壊的に変更しない。
 - GAS反映前に対象scriptId/rootDirを確認する。
 - `clasp push --force` は対象確認・テスト・ユーザー確認後に行う。
+- ユーザーが使う操作マニュアルはアプリ内のページ（`src/view_manual.html`、画面右上「操作マニュアル」＝`?view=manual`）。付録A〜Cは `docs/prompts` の指示文（web_work_weekly・project_weekly_analysis・project_morning_brief）から `node tools/build_manual.js` で作る。指示文を直したら、同じコミットでマニュアルを作り直し、/dev へ反映する（`tests/manual.test.js` がずれを検出する）。
+- 予約（Desktop版Work）の指示文 `desktop_work_ai.md`・`desktop_work_ai_daily.md` を直したときは、予約の中身は自動では変わらない。ユーザーに予定済みタスク画面での差し替え手順（全文つき）を必ず伝える。
