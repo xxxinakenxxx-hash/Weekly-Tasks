@@ -41,10 +41,11 @@ AI開発案件の「現在地だけ」を巡回し、Google Drive「週間タス
 - 取得結果：確認済み／要確認／不一致／取得失敗／チャット未確認（判定基準 C。チャット未確認は Codexチャットを特定できず、かつ台帳と Drive の照合もできない場合だけ）
 - 内容：（確認済み以外の理由。不一致の場合は何と何が食い違うか）
 - 確認元：
-  - TASK_CURRENT.md：（ファイルの場所）
+  - TASK_CURRENT.md：（案件キー。判定基準 E のその案件の場所だけを一字も変えずに書き、後ろに何も付けない）
   - Drive：（読んだファイル名）
   - Codexチャット：（スレッド名。特定できない場合は「チャット未確認」。Claude Code案件は「対象外（Claude Code案件）」）
   - 開発履歴：（Claude Code案件だけ。読んだコミット履歴の場所と最新コミットの日時・内容）
+  - 読めた経路：（Claude Code案件だけ。TASK_CURRENT.md と開発履歴を読めた経路の番号・方法と、失敗した経路のエラー）
 
 判定基準（週次・日次共通。2026-10-12 改訂。週次の AI案件.md と日次の AI案件_日次現在地.md は、必ずこの同じ基準で判定する）：
 A. 現在地の決め方
@@ -68,9 +69,10 @@ D. GitHub（Claude Code案件）の読み方
     ③ https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/HEAD/tasks/TASK_CURRENT.md
     ④ https://raw.githubusercontent.com/xxxinakenxxx-hash/Weekly-Tasks/refs/heads/claude/gallant-dijkstra-m5gen1/tasks/TASK_CURRENT.md
   - 開発履歴は ⑤ https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/HEAD 、読めなければ ⑥ https://github.com/xxxinakenxxx-hash/Weekly-Tasks/commits/claude/gallant-dijkstra-m5gen1.atom 。正本・実装指示書は https://github.com/xxxinakenxxx-hash/Weekly-Tasks/tree/HEAD/docs/official と /docs/implementation。
-  - 読めた経路を「確認元」に書く。すべて失敗した場合だけ、経路ごとのエラーを書いて「取得失敗」とする。
+  - 読めた経路・失敗した経路のエラーは、確認元の「読めた経路：」の行に書く（「TASK_CURRENT.md：」の行には書かない）。すべて失敗した場合だけ、経路ごとのエラーを書いて「取得失敗」とする。
 E. 対象と案件キー（変えない）
   - 対象は次の5案件。案件キー（TASK_CURRENT.md の場所）は一字も変えずに書く。
+  - 「TASK_CURRENT.md：」の行には、下の場所だけを書く。場所の後ろに、読めた経路・Cache miss・取得失敗・取得方法（GitHub連携など）・その他の注記を一切付けない（2026-10-14：この行は朝ブリーフ・週間分析の案件キーとしてそのまま使われるため）。取得経路やエラーは「読めた経路：」、それ以外の注記は「内容」（週次は「要確認」）に書く。
     ・機械売上管理システム：C:\Users\inamori240\Documents\machine-sales-system\tasks\TASK_CURRENT.md
     ・機械販売事例アプリ：C:\Users\inamori240\Documents\機械販売事例アプリ\tasks\TASK_CURRENT.md
     ・営業AIメモ：C:\Users\inamori240\Documents\営業AIメモ\tasks\TASK_CURRENT.md

@@ -6,7 +6,7 @@
 - Desktop版Workの週次AI巡回・日次AI現在地巡回は、`C:\Users\inamori240\Documents` 配下の `TASK_CURRENT.md` を1案件として探す（Codex案件。従来どおり）。
 - Claude Code（Web版）で開発している案件は、作業台帳（TASK_CURRENT.md）・正本・実装指示書・開発履歴が GitHub 上にあり、ローカルの Documents 配下に無い。そのため、Documents の検索では見つからない。
 - この一覧の案件は、Documents の検索に加えて、下記の場所から読む。巡回指示文（docs/prompts/desktop_work_ai.md、desktop_work_ai_daily.md）にも同じ内容を書く。
-- 「案件キー」は下記の固定値を使う（週間タスクの「案件キー」列、AI案件.md・AI案件_日次現在地.md の「TASK_CURRENT.md：」欄、朝ブリーフJSONの「案件キー」と同じ値）。ブランチ名に依存しない `HEAD`（リポジトリの既定ブランチ）を使う。
+- 「案件キー」は下記の固定値を使う（週間タスクの「案件キー」列、AI案件.md・AI案件_日次現在地.md の「TASK_CURRENT.md：」欄、朝ブリーフJSONの「案件キー」と同じ値）。「TASK_CURRENT.md：」欄には場所だけを書き、取得経路やエラーは別の行（読めた経路）に書く（2026-10-14）。ブランチ名に依存しない `HEAD`（リポジトリの既定ブランチ）を使う。
 
 ## 一覧
 

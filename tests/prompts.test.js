@@ -109,5 +109,60 @@ t('週間分析の指示文：AI案件は今週すでに行があっても必ず
   assert.ok(wa.includes('タスク名は対象週のその行と同じ名前にし、案件キーを必ず書く'));
 });
 
+// ---- 2026-10-14：案件キー（「TASK_CURRENT.md：」の行）への取得経路の混入を、発生源（巡回指示文）で防ぐ ----
+const KEY5 = ['C:\\Users\\inamori240\\Documents\\machine-sales-system\\tasks\\TASK_CURRENT.md', 'C:\\Users\\inamori240\\Documents\\機械販売事例アプリ\\tasks\\TASK_CURRENT.md',
+  'C:\\Users\\inamori240\\Documents\\営業AIメモ\\tasks\\TASK_CURRENT.md', 'C:\\Users\\inamori240\\Documents\\管理職AIメモ\\tasks\\TASK_CURRENT.md',
+  'https://github.com/xxxinakenxxx-hash/Weekly-Tasks/blob/HEAD/tasks/TASK_CURRENT.md'];
+// 巡回結果（md）の「TASK_CURRENT.md：」の行が案件キーだけになっているかの判定（朝ブリーフ・週間分析が写す値）
+const keyLines = md => (md.match(/^\s*-\s*TASK_CURRENT\.md：.*$/mg) || []).map(l => l.replace(/^\s*-\s*TASK_CURRENT\.md：/, '').trim());
+const keyOnly = v => KEY5.indexOf(v) >= 0;
+t('巡回指示文（週次・日次）：「TASK_CURRENT.md：」の行は案件キーだけ。経路・エラーは「読めた経路：」の行へ', () => {
+  [weekly, daily].forEach(s => {
+    assert.ok(s.includes('  - TASK_CURRENT.md：（案件キー。判定基準 E のその案件の場所だけを一字も変えずに書き、後ろに何も付けない）'));
+    assert.ok(s.includes('  - 読めた経路：（Claude Code案件だけ。TASK_CURRENT.md と開発履歴を読めた経路の番号・方法と、失敗した経路のエラー）'));
+    assert.ok(!s.includes('読めた経路を「確認元」に書く。'));
+  });
+  const c = criteria(weekly);
+  assert.ok(c.includes('読めた経路・失敗した経路のエラーは、確認元の「読めた経路：」の行に書く（「TASK_CURRENT.md：」の行には書かない）'));
+  assert.ok(c.includes('「TASK_CURRENT.md：」の行には、下の場所だけを書く。場所の後ろに、読めた経路・Cache miss・取得失敗・取得方法（GitHub連携など）・その他の注記を一切付けない'));
+  assert.strictEqual(criteria(weekly), criteria(daily));
+});
+t('巡回指示文：案件キーの固定値（5件）は変えていない', () => {
+  KEY5.forEach(k => assert.ok(criteria(weekly).includes('：' + k + '\n') || criteria(weekly).endsWith('：' + k), k));
+});
+t('回帰（10/14 の日次結果）：5件目の行に経路の説明が付いていたため、案件キーだけの判定で検出できる', () => {
+  const md1014 = ['  - TASK_CURRENT.md：' + KEY5[0], '  - TASK_CURRENT.md：' + KEY5[1], '  - TASK_CURRENT.md：' + KEY5[2], '  - TASK_CURRENT.md：' + KEY5[3],
+    '  - TASK_CURRENT.md：' + KEY5[4] + '（①WebはCache miss、②～④もCache miss。GitHub連携で同一ファイルを取得）'].join('\n');
+  const v = keyLines(md1014);
+  assert.deepStrictEqual(v.map(keyOnly), [true, true, true, true, false]);
+});
+t('修正後の書式どおりの結果（日次・週次）：5件とも「TASK_CURRENT.md：」は案件キーだけ。経路の説明は「読めた経路：」にあり混入しない', () => {
+  const route = '  - 読めた経路：①WebはCache miss、②～④もCache miss。GitHub連携で同一ファイルを取得';
+  const sample = KEY5.map((k, i) => '## ' + (i + 1) + '. 案件\n- 確認元：\n  - TASK_CURRENT.md：' + k + (i === 4 ? '\n' + route : '')).join('\n');
+  const v = keyLines(sample);
+  assert.strictEqual(v.length, 5);
+  assert.ok(v.every(keyOnly), v.join(' | '));
+  assert.ok(sample.includes('Cache miss') && !v.some(x => x.includes('Cache miss')));
+  // その値から作るJSON（朝ブリーフ・週間分析）は、Windowsの場所が正しくエスケープされ、読み戻すと同じ値になる
+  const json = JSON.stringify({ AI案件現在地: v.map(k => ({ 案件キー: k })) });
+  assert.ok(json.includes('"C:\\\\Users\\\\inamori240\\\\Documents\\\\machine-sales-system\\\\tasks\\\\TASK_CURRENT.md"'));
+  assert.deepStrictEqual(JSON.parse(json).AI案件現在地.map(x => x.案件キー), KEY5);
+});
+t('書式の資料（AI_DAILY_FORMAT・OBSIDIAN_FORMAT）も「TASK_CURRENT.md：」は場所だけ・「読めた経路：」の行あり', () => {
+  const daf = read('docs/AI_DAILY_FORMAT.md'), obf = read('docs/OBSIDIAN_FORMAT.md');
+  assert.ok(daf.includes('  - TASK_CURRENT.md：（ファイルの場所だけ。案件キーとして使うため、後ろに何も付けない）'));
+  assert.ok(daf.includes('  - 読めた経路：'));
+  assert.ok(obf.includes('  - TASK_CURRENT.md：（ファイルの場所だけ。案件キーとして使うため、後ろに何も付けない。見つからない場合は「なし」）'));
+  assert.ok(obf.includes('  - 読めた経路：'));
+});
+t('週間分析の指示文：案件キーは場所だけ（説明は入れない）・5件の固定値・「\\」の重ね書き・出力前の確認', () => {
+  const wa = block(read('docs/prompts/project_weekly_analysis.md'));
+  assert.ok(wa.includes('ファイルの場所（TASK_CURRENT.md で終わる部分）だけを一字も変えずに書く。場所のあとに続く括弧書き・取得経路・エラーなどの説明は「案件キー」に入れない'));
+  KEY5.forEach(k => assert.ok(wa.includes('    ・' + k), k));
+  assert.ok(wa.includes('文字列の中の「\\」（Windowsの場所の区切り）は、JSONでは「\\\\」と2つ重ねて書く'));
+  assert.ok(wa.includes('出力する前に、JSONとして読み込めること'));
+  assert.ok(wa.includes('タスク名や他の案件から推測して書かない'));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
