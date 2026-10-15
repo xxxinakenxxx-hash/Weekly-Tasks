@@ -1,5 +1,12 @@
 # TASK_CURRENT
 
+## 操作マニュアルの予約指示文同期（2026-10-15）
+- 本番予約3件の指示文を、アプリ内操作マニュアル付録D〜Fへ追加した。
+- 付録D＝docs/prompts/desktop_work_ai.md、付録E＝docs/prompts/desktop_work_ai_daily.md、付録F＝docs/prompts/web_work_morning.md。
+- tools/build_manual.js で付録A〜Fを元指示文から生成し、tests/manual.test.js で一字一致を検査する構成へ変更した。
+- GitHub上の指示文・マニュアルを変更しても予定済みタスク本文は自動更新されない。予約本文を変える場合は、操作マニュアル付録D〜Fから予定済みタスクへ差し替える。
+- 予約の実行環境・時刻・有効/停止状態は今回変更していない。IS-06は継続中。
+
 ## 現在工程
 IS-06 総合試験・受入
 
