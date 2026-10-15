@@ -1,5 +1,5 @@
 // 操作マニュアル（src/view_manual.html）のテスト：node tests/manual.test.js
-// 付録A〜Cが docs/prompts の指示文と一字も違わないこと（指示文だけ直してマニュアルが古いまま、を防ぐ）
+// 付録A〜Fが docs/prompts の指示文と一字も違わないこと（指示文だけ直してマニュアルが古いまま、を防ぐ）
 const assert = require('assert');
 const fs = require('fs'), path = require('path');
 const { build, block, APPENDIX } = require('../tools/build_manual');
@@ -21,6 +21,14 @@ t('付録Bに今日の決まり（AI案件は必ず案に出す）・案件キ�
   assert.ok(html.includes('必ずすべてタスク案に出す'));
   assert.ok(/appendix-b[\s\S]*案件キー/.test(html));
   assert.ok(/appendix-c[\s\S]*案件キー/.test(html));
+});
+t('付録D〜Fに本番予約3件の指示文が入り、予約名をマニュアルで確認できる', () => {
+  assert.ok(html.includes('【週間タスク】週次AI巡回'));
+  assert.ok(html.includes('【週間タスク】日次AI現在地巡回'));
+  assert.ok(html.includes('【週間タスク】朝情報収集'));
+  assert.strictEqual(APPENDIX.D, 'docs/prompts/desktop_work_ai.md');
+  assert.strictEqual(APPENDIX.E, 'docs/prompts/desktop_work_ai_daily.md');
+  assert.strictEqual(APPENDIX.F, 'docs/prompts/web_work_morning.md');
 });
 t('?view=manual でマニュアルを開ける。画面の「操作マニュアル」はこのページを開く', () => {
   const g = load();
