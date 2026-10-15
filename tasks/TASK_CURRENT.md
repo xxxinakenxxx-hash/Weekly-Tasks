@@ -1,11 +1,20 @@
 # TASK_CURRENT
 
 ## 操作マニュアルの予約指示文同期（2026-10-15）
-- 本番予約3件の指示文を、アプリ内操作マニュアル付録D〜Fへ追加した。
+- 訂正（2026-10-15）：下の「アプリ内操作マニュアル付録D〜Fへ追加した」は、GitHub上の生成元（tools/manual_template.html・tools/build_manual.js）と src/view_manual.html への付録D〜F追加まで（コミット e55ed63 まで）を指す。この時点で GAS /dev への反映（clasp push）は未確認で、実際には未反映だった（2026-10-15 にGAS側ソースを取得し、付録Dが無いことを確認）。/dev 実画面確認も未実施だった
+- 管理上の不備：GitHubの更新だけで GAS 反映済みのように記録した。/dev 実画面を確認せずに完了扱いの書き方をした。今後は「GitHub実装済み」「clasp push --force 済み」「GAS側ソース照合済み」「/dev実画面確認済み」を分けて記録する
+- 本番予約3件の指示文を、アプリ内操作マニュアル付録D〜Fへ追加した（GitHub側。上の訂正のとおり）。
 - 付録D＝docs/prompts/desktop_work_ai.md、付録E＝docs/prompts/desktop_work_ai_daily.md、付録F＝docs/prompts/web_work_morning.md。
 - tools/build_manual.js で付録A〜Fを元指示文から生成し、tests/manual.test.js で一字一致を検査する構成へ変更した。
 - GitHub上の指示文・マニュアルを変更しても予定済みタスク本文は自動更新されない。予約本文を変える場合は、操作マニュアル付録D〜Fから予定済みタスクへ差し替える。
 - 予約の実行環境・時刻・有効/停止状態は今回変更していない。IS-06は継続中。
+- 2026-10-15 の実施結果（状態区分ごと）：
+  - GitHub実装済み：e55ed63（付録A〜Fの生成元・src/view_manual.html・tests/manual.test.js）。node tools/build_manual.js で作り直しても差分なし
+  - tests/manual.test.js 合格：10件（付録A〜Fが元指示文と一字一致を含む）。全テスト合格
+  - clasp push --force 済み：scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS・rootDir src を確認。push 前のGASは ef38b63 と一致しており、差分は src/view_manual.html の1ファイルだけ。公開版1（@1）は不変
+  - GAS側ソース照合済み：push 後にGASを取得し直し、src/ の全ファイル（view_manual.html を含む）がローカルと一致。付録D・E・F（appendix-d/e/f、各予約名）を含むことを確認
+  - /dev実画面確認＝ユーザー確認待ち
+- 予約3件の名前・時刻・繰り返し・有効状態・本文、Sheets、Driveは変更していない
 
 ## 現在工程
 IS-06 総合試験・受入
