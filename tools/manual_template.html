@@ -26,7 +26,7 @@
 <body>
 <main>
   <h1>週間タスク・朝ブリーフ ユーザー操作マニュアル</h1>
-  <p>この手順で、週のタスクを登録し、平日の朝ブリーフを保存します。ChatGPT に貼る文は、このページの付録A〜Cの「コピー」ボタンでコピーしてください（付録の文は、いつも最新のものです）。</p>
+  <p>この手順で、週のタスクを登録し、平日の朝ブリーフを保存します。ChatGPT に貼る文は、このページの付録A〜Fの「コピー」ボタンでコピーしてください（付録の文は、いつも最新のものです）。</p>
   <p>週間タスク画面：<a href="<?= appUrl ?>" target="_top"><?= appUrl ?></a></p>
 
   <h2>実施するタイミング</h2>
@@ -88,6 +88,21 @@
   <h2 class="appendix-head">付録C　朝ブリーフを作る指示文 <button type="button" class="copy-btn" data-copy="appendix-c">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
   <p>平日の自動処理後、プロジェクト「週間タスク」の新しいチャットへ送ります。</p>
 <pre id="appendix-c">{{C}}</pre>
+
+  <h2>自動予約の指示文</h2>
+  <p class="note">予約本文を作成・差し替えるときは、下の付録D〜Fをそのまま使います。docs/prompts の元指示文を変更した場合、このマニュアルも同じ内容へ再生成します。ただし、既存の予約本文は自動では書き換わらないため、予定済みタスク側で差し替えが必要です。</p>
+
+  <h2 class="appendix-head">付録D　【週間タスク】週次AI巡回の予約指示文 <button type="button" class="copy-btn" data-copy="appendix-d">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>予約「【週間タスク】週次AI巡回」の本文として使います。</p>
+<pre id="appendix-d">{{D}}</pre>
+
+  <h2 class="appendix-head">付録E　【週間タスク】日次AI現在地巡回の予約指示文 <button type="button" class="copy-btn" data-copy="appendix-e">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>予約「【週間タスク】日次AI現在地巡回」の本文として使います。</p>
+<pre id="appendix-e">{{E}}</pre>
+
+  <h2 class="appendix-head">付録F　【週間タスク】朝情報収集の予約指示文 <button type="button" class="copy-btn" data-copy="appendix-f">コピー</button> <span class="copy-done" hidden>コピーしました</span></h2>
+  <p>予約「【週間タスク】朝情報収集」の本文として使います。実行環境・時刻は docs/WORK_SCHEDULE.md の実機確認済み設定に従います。</p>
+<pre id="appendix-f">{{F}}</pre>
 </main>
 <script>
   // 付録の「コピー」：付録の文を全部コピーする（使えない環境では文を選択状態にする）
