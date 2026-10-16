@@ -16,8 +16,8 @@
   - /dev実画面確認＝ユーザー確認待ち
 - 予約3件の名前・時刻・繰り返し・有効状態・本文、Sheets、Driveは変更していない
 
-## AI案件の自動発見と案件キーの継承（2026-10-15〜16、未コミット・ローカルのみ）
-状態区分：GitHub未保存（コミット・push していない）／clasp push なし／GAS・予約・Drive・Sheets は未変更／Desktop版Workでの本番実行は未確認。IS-06は継続中
+## AI案件の自動発見と案件キーの継承（2026-10-15〜16）
+状態区分：GitHub保存済み（commit 5091e2e0cbe45af030e16d575da9d7dd810453e5、origin/claude/gallant-dijkstra-m5gen1 へ push 済み）／clasp push なし／GAS・予約・Drive・Sheets は未変更／Desktop版Workでの本番実行は未確認。IS-06は継続中
 ### 実機確認済み
 - Desktop版Work（2026-10-15、ユーザー確認）：
   - ローカルの動的探索：C:\Users\inamori240\Documents 直下のフォルダ16件を一覧にし、各フォルダの tasks\TASK_CURRENT.md の有無だけを確認 → 4件発見、エラーなし（再帰検索はしない）
@@ -62,7 +62,7 @@
 - Desktop版Work の上記の巡回で使った指示文が、今回コミットする版と一字一致かは Claude Code では未確認（実行結果はユーザーの実機確認による）
 - Aegis Mesh の案件キーの扱い（シートの空欄の案件キーをどの値にするか、ユーザーが手で入れるか）は未決定。今回はシート・既存データを変更していない
 - AI-memo は GitHub だけの新規案件として巡回に入る見込み（ローカルの 管理職AIメモ の origin は management-AImemo で、AI-memo とは一致しないため統合されない）。New-Sales-Cases も GitHub だけの新規案件の見込み（機械販売事例アプリは origin 未設定のため統合されない）
-- コミット・push、マニュアルの /dev 反映、予約2件（週次・日次）の指示文の差し替え（いずれもユーザー承認待ち）
+- マニュアルの /dev 反映、予約2件（週次・日次）の指示文の差し替え（いずれもユーザー承認待ち）
 
 ## 現在工程
 IS-06 総合試験・受入
