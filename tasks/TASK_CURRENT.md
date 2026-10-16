@@ -16,6 +16,54 @@
   - /dev実画面確認＝ユーザー確認待ち
 - 予約3件の名前・時刻・繰り返し・有効状態・本文、Sheets、Driveは変更していない
 
+## AI案件の自動発見と案件キーの継承（2026-10-15〜16、未コミット・ローカルのみ）
+状態区分：GitHub未保存（コミット・push していない）／clasp push なし／GAS・予約・Drive・Sheets は未変更／Desktop版Workでの本番実行は未確認。IS-06は継続中
+### 実機確認済み
+- Desktop版Work（2026-10-15、ユーザー確認）：
+  - ローカルの動的探索：C:\Users\inamori240\Documents 直下のフォルダ16件を一覧にし、各フォルダの tasks\TASK_CURRENT.md の有無だけを確認 → 4件発見、エラーなし（再帰検索はしない）
+  - GitHub の動的探索：所有者 xxxinakenxxx-hash のリポジトリ一覧 → 各デフォルトブランチの tasks/TASK_CURRENT.md を確認する方式で、リポジトリ名の事前指定なしに発見できる（全体コード検索は使わない）
+  - remote origin の取得は一部可能：営業AIメモ＝xxxinakenxxx-hash/external-voice-poc（GitHub 側にも TASK_CURRENT.md あり）、管理職AIメモ＝xxxinakenxxx-hash/management-AImemo（GitHub 側は TASK_CURRENT.md なし）、machine-sales-system＝origin を取得できず、機械販売事例アプリ＝origin 未設定
+  - GitHub の tasks/TASK_CURRENT.md を最後に変更したコミット日時の取得（commits?path=…&sha=（デフォルトブランチ）&per_page=1 相当）
+  - external-voice-poc のローカル（2026-10-15 17:13:24.5416819 JST）と GitHub（2026-10-15 15:37:45 JST）の日時比較：比較可能、ローカルが新しい
+- GitHub の現在の実データ（2026-10-16 08:5x JST、Claude Code が読み取りのみで確認。一覧＝セッションのリポジトリ一覧機能、デフォルトブランチ＝git ls-remote --symref、ファイル＝非公開はGitHub連携のファイル取得・公開は raw.githubusercontent.com の HEAD）：
+  - 所有者 xxxinakenxxx-hash のリポジトリ15件のうち、tasks/TASK_CURRENT.md があるのは4件：AI-memo（非公開、main、先頭行「# TASK_CURRENT」）・New-Sales-Cases（main、「# TASK_CURRENT」）・Weekly-Tasks（claude/gallant-dijkstra-m5gen1、「# TASK_CURRENT」）・external-voice-poc（main、「# TASK_CURRENT.md」）
+  - 無い11件（すべて main）：Aegis-Mesh・trend-report-site・shopping-list・management-AImemo・dialysis-weight-app・shpping-list・sogoten2026・salesAI（公開、raw で 404）、promptory・recipe-vault・ComprehensiveFortuneTelling（非公開、GitHub連携で「ファイルなし」）
+  - AI-memo の tasks/TASK_CURRENT.md は現在 main に存在する（読み取りのため、このセッションの読み取り対象に AI-memo・promptory・recipe-vault・ComprehensiveFortuneTelling を追加した。変更はしていない）
+- Desktop版Work（2026-10-16、ユーザーの実機確認）：
+  - GitHub リポジトリ総数：16
+  - tasks/TASK_CURRENT.md 発見：5件（external-voice-poc・AI-memo・Weekly-Tasks・New-Sales-Cases・Aegis-Mesh）
+  - Aegis Mesh：GitHub（xxxinakenxxx-hash/Aegis-Mesh）に tasks/TASK_CURRENT.md あり。前回の巡回結果に記載なし。Sheets「タスク」に「Aegis Mesh」の案件行あり・案件キー欄は空欄
+  - 判定：自動で採番せず「案件キー確認不能」（取得結果は要確認）
+  - 「案件なし」と「案件あり・キーなし」を分ける必要があることが実機で判明（キーが見つからないことだけで「案件なし」とすると、Aegis Mesh に新しいキーを誤って発行し、既存の行と二重になる）
+- Claude Code の再確認（2026-10-16、読み取りのみ）：リポジトリ一覧は16件で、朝の確認から増えたのは AI-Development-Law（main、tasks/TASK_CURRENT.md は raw で 404）。Aegis-Mesh は main に tasks/TASK_CURRENT.md あり（raw で 200、先頭行「# TASK_CURRENT」、「更新日：2026-10-16」。リポジトリの最終 push は 2026-10-16T01:36:24Z）。朝の「15件中4件」との違いは、この2つの変化と一致する。シートの Aegis Mesh の行は Claude Code では見ていない（ユーザーの実機確認による）
+- Desktop版Work（2026-10-16、ユーザーの実機確認。名前の扱いの修正後の巡回）：
+  - ローカル案件発見：4件。GitHub リポジトリ：16件。GitHub tasks/TASK_CURRENT.md 発見：5件（external-voice-poc・AI-memo・Weekly-Tasks・New-Sales-Cases・Aegis-Mesh）
+  - 既存案件キーの変更：なし。名前だけでの誤統合：なし
+  - 案件キー確認不能：GitHub の AI-memo・新販売事例・Aegis Mesh
+  - 固定の案件一覧なしでの日次巡回：可
+### ローカル実装・テスト済み（Claude Code。Desktop版Workでの本番実行は未確認）
+- 巡回指示文（docs/prompts/desktop_work_ai.md・desktop_work_ai_daily.md）：固定の案件・件数・パス・Weekly-Tasks だけの URL・1A を削除。手順1＝1-1 ローカル（Documents 直下の各フォルダの tasks\TASK_CURRENT.md）／1-2 GitHub（所有者のリポジトリ一覧 → 各デフォルトブランチ。404は次へ）／1-3 origin の owner/repo 一致だけで同じ案件（origin なし・読めない・不一致は統合しない。GitHub 側が404ならローカルだけで続ける）／1-4 更新日時が新しい方を読む（取れない・同時刻は要確認）／1-5 案件キー。判定基準 D・E を案件ごとのリポジトリ名で書き直し（週次・日次で同じ文面）
+- 案件キー（識別子。今回読んだ TASK_CURRENT.md とは別。読む方が変わっても変えない）：既存のキーを前回の結果（AI案件.md・AI案件_日次現在地.md）と「タスク」シートの案件キー列（読むだけ）から探す。①1つ見つかれば必ず引き継ぐ ②2つ以上ならまとめず要確認 ③新しいキーは、前回の結果とシートの両方を確認でき、両方に不存在の場合だけ発行する（2026-10-16 ユーザー決定）：ローカルだけ＝ローカルの場所、GitHub だけ・最初から両方＝https://github.com/（owner）/（repo）/blob/HEAD/tasks/TASK_CURRENT.md ④片方でも確認不能なら案件キー確認不能として発行しない。すなわち「前回結果とSheetsの両方を確認でき、両方に不存在の場合だけ新規案件キーを発行する。片方でも確認不能なら案件キー確認不能として発行しない」（TASK_CURRENT.md：なし、取得結果は要確認、注記の先頭に「案件キー確認不能：」）。週間分析ではタスク案に出さずコーションに書き、朝ブリーフでは案件キー・taskId を空にして同期しない。アプリ・シートの列・既存データは変更なし（取得結果は既存の「要確認」を使う）
+- 書式に「リポジトリ：」「今回読んだTASK_CURRENT.md：」「同じ案件の照合：」「更新日時：」を追加（AI_DAILY_FORMAT・OBSIDIAN_FORMAT も同じ）。「TASK_CURRENT.md：」の行は案件キーだけ（2026-10-14 の制約を維持）
+- 週間分析・朝ブリーフの指示文：固定5値の一覧をやめ、案件キーは2つの形のどちらかで、巡回結果のその案件の「TASK_CURRENT.md：」の値と一字一致（「今回読んだTASK_CURRENT.md：」の値を使わない）、すべての案件（件数不定）を出す、を出力前の確認に追加
+- docs/AI_CASES.md を自動発見の説明に書き直し（個別登録は不要。GitHub の現在の件数を訂正）。docs/BRIEF_FORMAT.md の例を変更。マニュアル src/view_manual.html を作り直し（/dev 未反映）
+- tools/case_select.js（テスト専用。本番では動かない）：origin→owner/repo、同じ案件、更新日時の比較、既存キーの継承と新規キーの発行条件。tests/case_select.test.js
+- 「案件なし」と「案件あり・キーなし」の分離（2026-10-16、Aegis Mesh の実機確認を受けたユーザー決定。巡回指示文の手順 1-5・AI_CASES・AI_DAILY_FORMAT・tools/case_select.js）：
+  - 前回の結果・シート（種別 AI案件の行）にこの案件があるかを先に決め、キーが見つからないことだけで「ない」としない
+  - ①有効なキー1つ＝引き継ぐ ②2つ以上＝要確認 ③同じ案件はあるが有効なキーなし（空欄・なし・不正）＝案件キー確認不能（今回の場所で補わない・不正なキーを直さない） ③の2 既存案件の可能性あり＝案件キー確認不能 ④両方とも正常に確認でき、同じ案件も可能性ありの行も無い＝新規 ⑤片方でも確認できない＝案件キー確認不能
+- 案件名の扱いの修正（2026-10-16 ユーザー決定。前の版で Claude Code が入れた「大文字小文字・空白・「-」「_」の違いをなくした名前で同じ案件とみなす」決まりは採用されず、取り消した）：
+  - 同じ案件と確定する強い根拠は、有効なキー（TASK_CURRENT.md で終わる値）が今回の場所と同じこと、または owner/repo が同じこと（前回の「リポジトリ：」、GitHub の形のキー、キー欄の .git URL、ローカルは origin を正規化した owner/repo）だけ
+  - 名前だけでは同じ案件と確定しない。名前の一致・類似は「既存案件の可能性あり」として新しいキーの自動発行を止めるだけ（その行のキーも引き継がない）。owner/repo が違うと分かる行は、名前が同じでも別の案件
+  - tools/case_select.js の判定結果を confirmedSameCase（強い根拠で同じ）／possibleExistingCase（名前が同じ・似ていて確定できない）／newCase（新しい案件と確定）／undetermined（確認元を読めない）に分けた
+  - Aegis Mesh のテスト：同一案件確定は不可、既存案件の可能性あり、新しいキーは発行しない（TASK_CURRENT.md：なし・取得結果は要確認）、GitHub の URL を自動で採番しない、案件キー確認不能
+- テスト（2026-10-16、案件名の扱いの修正後）：case_select 50（案件名の扱い10件〔owner/repo 一致・有効なキーで確定、名前だけ完全一致・Aegis Mesh と Aegis-Mesh・ABC-Test と ABC_Test では確定せず採番もしない、同名でも owner/repo が違えば別の案件、候補なしなら新規、不正キー＋名前一致は直さない、切替時の継承〕、Aegis Mesh の実機ケース、分離の8件〔キー空欄・不正・.git の URL を有効なキーにしない・自動で直さない〕、名前で confirmedSameCase にしないことの確認と、同じ案件の判定・origin なし／読めない・GitHub 404・日時の比較〔ローカル新／GitHub新／同時刻／取得不能〕・既存キーの継承〔GitHub→ローカル、ローカル→GitHub、読む方の切替〕・前回の結果もシートも読めない場合は発行しない・新規ローカル／新規GitHub の初回発行・二重発行なし）、prompts 31（分離と案件名の扱いの文言・Aegis Mesh の記録、固定の案件名・件数が無い・探索条件・下流の案件キー確認不能の扱い・GitHub の確認済み件数〔16件中5件〕が資料と記録で一致）、brief_json 14（7件の同期、説明つきキーの拒否、JSONエスケープ）、refresh 14（7件の作成・取り直し）を含む全テスト合格。画面試験598件、週間画面7件の読み込みと説明つきキーの拒否、朝ブリーフ読み込み（3項目）、マニュアル10件 合格。アプリ（GASコード）は変更なし
+### 未確認
+- 新しい巡回指示文を Desktop版Workで本番実行した結果（前回の結果・シートからのキー引継ぎ、Desktop版Workが「タスク」シートの案件キー列を読めるか、「リポジトリ：」の記録、案件キー確認不能の扱い）
+- Desktop版Work の上記の巡回で使った指示文が、今回コミットする版と一字一致かは Claude Code では未確認（実行結果はユーザーの実機確認による）
+- Aegis Mesh の案件キーの扱い（シートの空欄の案件キーをどの値にするか、ユーザーが手で入れるか）は未決定。今回はシート・既存データを変更していない
+- AI-memo は GitHub だけの新規案件として巡回に入る見込み（ローカルの 管理職AIメモ の origin は management-AImemo で、AI-memo とは一致しないため統合されない）。New-Sales-Cases も GitHub だけの新規案件の見込み（機械販売事例アプリは origin 未設定のため統合されない）
+- コミット・push、マニュアルの /dev 反映、予約2件（週次・日次）の指示文の差し替え（いずれもユーザー承認待ち）
+
 ## 現在工程
 IS-06 総合試験・受入
 

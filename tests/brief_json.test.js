@@ -112,19 +112,42 @@ t('案件名だけが一致しても（案件キー・taskIdなし）同期し�
 // ---- 指示文（docs/prompts/project_morning_brief.md）に再発防止の決まりがあること ----
 const block = s => s.match(/^```\n([\s\S]*?)\n```$/m)[1];
 const prompt = block(fs.readFileSync(path.join(__dirname, '..', 'docs/prompts/project_morning_brief.md'), 'utf8'));
-t('指示文：案件キーは場所（TASK_CURRENT.md で終わる部分）だけ。説明は「内容」へ。5件の固定値', () => {
+t('指示文：案件キーは場所（TASK_CURRENT.md で終わる部分）だけ。説明は「内容」へ。2つの形（固定の一覧なし。2026-10-15）', () => {
   assert.ok(prompt.includes('ファイルの場所（TASK_CURRENT.md で終わる部分）だけを一字も変えずに書く'));
   assert.ok(prompt.includes('場所のあとに続く括弧書き・取得経路・エラーなどの説明は「案件キー」に入れない（必要なら「内容」に書く）'));
-  Object.values(KEYS).forEach(k => assert.ok(prompt.includes('    ・' + k + '\n') || prompt.endsWith('    ・' + k), k));
+  assert.ok(prompt.includes('    ・C:\\Users\\inamori240\\Documents\\（フォルダ名）\\tasks\\TASK_CURRENT.md'));
+  assert.ok(prompt.includes('    ・https://github.com/xxxinakenxxx-hash/（リポジトリ名）/blob/HEAD/tasks/TASK_CURRENT.md'));
+  Object.values(KEYS).forEach(k => assert.ok(!prompt.includes(k), '固定値が残っている：' + k));
 });
-t('指示文：「\\」を「\\\\」と重ねて書く決まりと例', () => {
+t('指示文：「\\」を「\\\\」と重ねて書く決まりと例（例は固定案件名ではない）', () => {
   assert.ok(prompt.includes('文字列の中の「\\」（Windowsの場所の区切り）は、JSONでは「\\\\」と2つ重ねて書く'));
-  assert.ok(prompt.includes('"C:\\\\Users\\\\inamori240\\\\Documents\\\\営業AIメモ\\\\tasks\\\\TASK_CURRENT.md"'));
+  assert.ok(prompt.includes('"C:\\\\Users\\\\inamori240\\\\Documents\\\\sample-project\\\\tasks\\\\TASK_CURRENT.md"'));
 });
-t('指示文：出力前の確認（JSONとして読める・必須項目・案件キー・取得結果を変えない）', () => {
+t('指示文：出力前の確認（JSONとして読める・必須項目・案件キーの形・すべての案件・取得結果を変えない）', () => {
   ['JSONとして読み込める', '「日付」「今日の一言」「今日の流れ」「今日優先すること」「気にかけておきたいこと」「もう片づいていること」「未完了・持越し」がそろっている',
-    '「案件キー」は、空か、上の固定値のどれか', '「取得結果」は AI案件_日次現在地.md の値のまま', '取得失敗の案件を「確認済み」に変えない'].forEach(x => assert.ok(prompt.includes(x), x));
+    '「案件キー」は、空か、上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）', 'AI案件_日次現在地.md のすべての案件（件数は決まっていない）が入っていて、各件の「案件キー」が AI案件_日次現在地.md のその案件の「TASK_CURRENT.md：」の値と一字も違わない（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）',
+    '「取得結果」は AI案件_日次現在地.md の値のまま', '取得失敗の案件を「確認済み」に変えない'].forEach(x => assert.ok(prompt.includes(x), x));
   assert.ok(prompt.includes('案件名（タスク名）で対応付けない'));
+  assert.ok(!prompt.includes('固定値'));
+});
+// ---- 2026-10-15：6件目以降の案件（自動発見で増えた GitHub だけの案件を含む）も朝ブリーフで同期できる ----
+t('6件目以降：GitHub だけで見つかった新しい案件を含む7件の朝ブリーフJSONを読み、7件とも同期できる（件数の上限なし）', () => {
+  const { g, ids } = setup();
+  const NEW = { 'repo-x': 'https://github.com/xxxinakenxxx-hash/repo-x/blob/HEAD/tasks/TASK_CURRENT.md', 'repo-y': 'https://github.com/xxxinakenxxx-hash/repo-y/blob/HEAD/tasks/TASK_CURRENT.md' };
+  Object.keys(NEW).forEach(r => { ids[r] = g.createTask({ targetWeek: W, title: r, kind: 'AI案件', caseKey: NEW[r] }).taskId; });
+  const text = json1014(ids, d => {
+    d['AI案件現在地'][4] = Object.assign(d['AI案件現在地'][4], { 取得結果: '確認済み', 現在地: 'IS-06 継続', 内容: '' });
+    Object.keys(NEW).forEach(r => d['AI案件現在地'].push({ 案件キー: NEW[r], taskId: '', 案件名: r, 取得結果: '確認済み', 現在地: r + ' の現在地', 取得日時: AT, 内容: '' }));
+  });
+  const res = g.saveMorningBrief(toServer(text));
+  assert.strictEqual(res.aiSync.synced.length, 7);
+  assert.strictEqual(res.aiSync.skipped.length, 0);
+  assert.strictEqual(row(g, ids['repo-y']).aiPosition, 'repo-y の現在地');
+});
+t('6件目以降：新しい案件の案件キーに説明文が付いた場合も拒否する（形は同じ決まり）', () => {
+  const { g, ids } = setup();
+  const text = json1014(ids, d => d['AI案件現在地'].push({ 案件キー: 'https://github.com/xxxinakenxxx-hash/repo-x/blob/HEAD/tasks/TASK_CURRENT.md（GitHub連携で取得）', taskId: '', 案件名: 'repo-x', 取得結果: '取得失敗', 現在地: '', 取得日時: AT, 内容: 'x' }));
+  assert.throws(() => g.saveMorningBrief(toServer(text)), /6件目：案件キーは TASK_CURRENT\.md の場所です/);
 });
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

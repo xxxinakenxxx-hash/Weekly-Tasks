@@ -113,5 +113,16 @@ t('見立て・コーション：形式が違えば何も書かない', () => {
   assert.throws(() => g.commitWeekBoard(W, { analysis: { outlook: 'o', cautions: 'x' } }), /コーション/);
   assert.strictEqual(g.getWeekBoard(W).analysis, null);
 });
+// ---- 2026-10-15：自動発見で案件が増えても（6件目以降・GitHub だけの案件）、週間分析JSONで作成・更新できる ----
+t('6件目以降：7件のAI案件（ローカル4・GitHub 3）を週間分析JSONから作成し、取り直しで7件とも更新できる', () => {
+  const g = load(); g.setupSheets();
+  const keys = ['a', 'b', 'c', 'd'].map(f => 'C:\\Users\\inamori240\\Documents\\project-' + f + '\\tasks\\TASK_CURRENT.md')
+    .concat(['Weekly-Tasks', 'repo-x', 'repo-y'].map(r => 'https://github.com/xxxinakenxxx-hash/' + r + '/blob/HEAD/tasks/TASK_CURRENT.md'));
+  g.commitWeekBoard(W, { creates: keys.map((k, i) => ({ title: '案件' + (i + 1), kind: 'AI案件', aiPosition: '初回' + (i + 1), caseKey: k })) });
+  const rows = g.getTasks(W);
+  assert.strictEqual(rows.length, 7);
+  g.commitWeekBoard(W, { refreshes: rows.map(r => ({ taskId: r.taskId, changes: { aiPosition: '取り直し：' + r.title } })) });
+  assert.ok(g.getTasks(W).every(r => r.aiPosition === '取り直し：' + r.title));
+});
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
