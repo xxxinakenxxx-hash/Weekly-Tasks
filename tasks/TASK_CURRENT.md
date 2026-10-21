@@ -1,5 +1,12 @@
 # TASK_CURRENT
 
+## GAS反映時の操作マニュアル自動同期（2026-10-21）
+- 原因：docs/prompts と GitHub上の src/view_manual.html は更新済みでも、GAS /dev へ未反映のまま古い操作マニュアルを使える状態だった。
+- 対応：tools/push_gas_checked.js を追加。今後のGAS /dev反映はこのスクリプトだけを使い、作業ツリーclean確認 → 操作マニュアル再生成 → manual.test.js → 差分なし確認 → scriptId/rootDir確認 → clasp push --force → deployment一覧不変確認を一括実行する。
+- 安全側：マニュアル再生成で差分が出た場合はGASへpushせず停止する。rawの clasp push --force はCLAUDE.mdで禁止した。
+- GitHub実装：194f37bfb0aba48e2e268e65333be0f8908e9f7a、1649f6432115bed7fd2db3437a65f09e232ebb9e。
+- 未確認：実PCで tools/push_gas_checked.js を実行してGAS /devへ反映した結果。
+
 ## 操作マニュアルの予約指示文同期（2026-10-15）
 - 訂正（2026-10-15）：下の「アプリ内操作マニュアル付録D〜Fへ追加した」は、GitHub上の生成元（tools/manual_template.html・tools/build_manual.js）と src/view_manual.html への付録D〜F追加まで（コミット e55ed63 まで）を指す。この時点で GAS /dev への反映（clasp push）は未確認で、実際には未反映だった（2026-10-15 にGAS側ソースを取得し、付録Dが無いことを確認）。/dev 実画面確認も未実施だった
 - 管理上の不備：GitHubの更新だけで GAS 反映済みのように記録した。/dev 実画面を確認せずに完了扱いの書き方をした。今後は「GitHub実装済み」「clasp push --force 済み」「GAS側ソース照合済み」「/dev実画面確認済み」を分けて記録する
