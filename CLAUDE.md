@@ -50,6 +50,6 @@
 - ユーザー確認なしで次工程へ進まない。
 - Google Sheetsの正データを破壊的に変更しない。
 - GAS反映前に対象scriptId/rootDirを確認する。
-- `clasp push --force` は対象確認・テスト・ユーザー確認後に行う。
+- GAS /dev 反映は、ユーザー確認後に必ず `node tools/push_gas_checked.js` から行う。`clasp push --force` を直接実行しない。このスクリプトが作業ツリーclean確認 → `docs/prompts` から操作マニュアル再生成 → `tests/manual.test.js` → マニュアル差分なし確認 → scriptId/rootDir確認 → `clasp push --force` → deployment一覧不変確認までを一括で行う。マニュアル再生成で差分が出た場合はGASへ反映せず停止し、先にその差分を確認・コミットする。
 - ユーザーが使う操作マニュアルはアプリ内のページ（`src/view_manual.html`、画面右上「操作マニュアル」＝`?view=manual`）。付録A〜Fは `docs/prompts` の指示文（A:web_work_weekly、B:project_weekly_analysis、C:project_morning_brief、D:desktop_work_ai、E:desktop_work_ai_daily、F:web_work_morning）から `node tools/build_manual.js` で作る。指示文を直したら、同じ変更でマニュアルを作り直し、`tests/manual.test.js` で元指示文と一字も違わないことを確認する。
 - 本番予約3件（【週間タスク】週次AI巡回／【週間タスク】日次AI現在地巡回／【週間タスク】朝情報収集）の本文は、操作マニュアル付録D〜Fを差し替え元とする。GitHub側の指示文やマニュアルを直しても既存予約の本文は自動では変わらないため、予約本文の変更が必要なときは、ユーザーに予定済みタスク画面で付録全文へ差し替える手順を伝える。
