@@ -1,5 +1,23 @@
 # TASK_CURRENT
 
+## 操作マニュアル付録B〜EとGAS /devの同期（2026-10-21）
+対象：付録B＝docs/prompts/project_weekly_analysis.md、付録C＝project_morning_brief.md、付録D＝desktop_work_ai.md、付録E＝desktop_work_ai_daily.md。反映元は GitHub の a8cd23b（作業ブランチ claude/gallant-dijkstra-m5gen1。src/ は 5091e2e と同じ）
+【完了したもの】
+- B〜E元指示文確認：4ファイルを全文読み、固定5案件の一覧・固定の案件名が無いこと、TASK_CURRENT.md の動的探索（D・E）、案件数不定、案件キーと「今回読んだTASK_CURRENT.md」の分離、案件キー確認不能の扱い、名前だけで同じ案件と確定しない（D・E）、JSONで「\」を「\\」と重ねて書く例（B・C、sample-project）、案件キーは TASK_CURRENT.md で終わり説明を付けない（B〜E）を確認。Markdownリンク形式は B〜E に無い（「Markdownリンクにしない」と明記した文は無く、「場所だけを一字も変えずに書く」「形は次のどちらか」で決めている）
+- 操作マニュアル再生成：node tools/build_manual.js。src/view_manual.html はコミット済みの内容と同じ（差分なし）
+- B〜E一字一致テスト：tests/manual.test.js 10件合格（付録A〜Fが元指示文と一字一致）。別の照合（appendix-b〜e の本文を取り出して元指示文と比較、旧記載・Markdownリンクなし）でも一致。全テスト（tests/*.test.js 17ファイル）と画面試験（598件、週間画面7件、朝ブリーフ読み込み、マニュアル表示）合格
+- GAS /dev反映：反映前にGAS側ソースを取得し、src/ の19ファイルのうち18ファイルがローカルと一致、違いは view_manual.html だけ（GAS側は e55ed63・88fb38d の src/ と全ファイル一致＝GAS側だけの変更なし）。CLAUDE.md の決まりどおり node tools/push_gas_checked.js で反映（作業ツリーclean・マニュアル再生成・manual.test.js・マニュアル差分なし・scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS／rootDir src の確認・clasp push --force・deployment一覧不変の確認まで成功）。実行は Claude Code の作業環境（実PCではない）
+- GAS側再取得・一致確認：反映後にGAS側ソースを取得し直し、src/ の19ファイルすべてがローカルと一致。GAS側 view_manual.html の付録B〜Eが元指示文と一字一致、固定5案件の一覧なし、Windowsの場所の例は「\」を「\\」と重ねて書く形、GitHub の案件キーはMarkdownリンクではない、動的案件方式
+- 公開版不変確認：deployment は反映前後とも @HEAD と @1（IS-00 共通基盤）の2件で変化なし。version は 1 だけ（新しい version・新しいデプロイなし）
+【未完了】
+- 予約【週間タスク】週次AI巡回への付録D本文差し替え
+- 予約【週間タスク】日次AI現在地巡回への付録E本文差し替え
+- 差し替え後の予約詳細画面で本文一致確認
+- 差し替え後の次回自動実行確認
+- ユーザーがGAS /dev実画面で操作マニュアル付録B〜Eの表示を確認する
+【変更していないもの】
+- 予約本文・予約の有効／停止、Drive、Sheets、公開版は変更していない
+
 ## GAS反映時の操作マニュアル自動同期（2026-10-21）
 - 原因：docs/prompts と GitHub上の src/view_manual.html は更新済みでも、GAS /dev へ未反映のまま古い操作マニュアルを使える状態だった。
 - 対応：tools/push_gas_checked.js を追加。今後のGAS /dev反映はこのスクリプトだけを使い、作業ツリーclean確認 → 操作マニュアル再生成 → manual.test.js → 差分なし確認 → scriptId/rootDir確認 → clasp push --force → deployment一覧不変確認を一括実行する。
