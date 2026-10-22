@@ -1,5 +1,22 @@
 # TASK_CURRENT
 
+## 2026-10-22 追加改修（JSON手渡し自動化）着手・実装前の静的確認
+- 根拠：docs/implementation/追加改修指示書_JSON手渡し自動化_v1.0.md（本文 v1.1、コミット a629b31）§3.5「実装前の静的確認」。IS-06は継続中のまま（完了扱いにしない）
+- 作業開始時のブランチ・コミット：claude/gallant-dijkstra-m5gen1、6d682514b6a0d34ecec07cd6ba38c75b5b98e5c9（origin と一致）
+- 状態：静的確認まで実施。コードの実装は未着手（ユーザー承認待ち）。GAS・予約・トリガー・Drive・Sheets は未変更、clasp push なし
+- 読んだもの：ルールブック.md・GitHubリポジトリ標準規約.md・CLAUDE.md・指示書v1.1・本ファイル（全文）、src/Config.js・Code.js・Schema.js・Brief.js・Board.js（全文）、src/weekly.html・brief.html（読込処理の部分）、tests/gas_stub.js（前半）、tools/push_gas_checked.js、docs/WORK_SCHEDULE.md・BRIEF_FORMAT.md・HANDOFF_FORMAT.md（全文）、README.md
+- 静的確認の結果（提案。確定はユーザー承認後）：
+  1. 変更ファイル一覧：新規 src/Import.js（Drive読取・種別判別・検証・補正1回・取込・取込状態の記録・時間トリガー設置関数）、tests/import.test.js。変更 src/Brief.js（取込状態を返す。saveMorningBrief の同期・履歴の決まりは変えない）、src/Board.js（「案」と取込状態を返す。commitWeekBoard の決まりは変えない）、src/weekly.html・view_weekly.html・brief.html・view_brief.html・css.html（案の表示・取込結果と失敗理由・貼付欄の「手動取込（非常用）」化）、tests/gas_stub.js（DriveApp・PropertiesService・トリガーの模擬）、tests/prompts.test.js・brief_json.test.js・manual.test.js、docs/prompts/project_morning_brief.md・desktop_work_ai_daily.md・project_weekly_analysis.md、docs/BRIEF_FORMAT.md・HANDOFF_FORMAT.md、tools/manual_template.html（貼付運用の説明）、src/view_manual.html（再生成）、docs/WORK_SCHEDULE.md（実機設定後の結果だけ）
+  2. JSON保存先：Drive「週間タスクボード」フォルダ直下（ID 1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z。朝情報.md・AI案件_日次現在地.md と同じ場所、Obsidian Vault「週間タスク」の外）に 朝ブリーフ.json・週間分析.json。理由：日次経路にObsidianを混ぜない（IS-03 完了条件）、GASが読む場所を1つにする。フォルダID は README・本ファイル IS-03 記録による。Drive 上の現物は今回未確認
+  3. 「案」の保持形式：新しいシート・仮テーブルは作らない。Drive の 週間分析.json そのものを「案」の元とし、GAS は検証結果（ファイルID・更新日時・対象週・結果・理由）だけをスクリプトのプロパティ（PropertiesService）に記録する。週間画面を開くと、検証に合格した今週分を従来の貼付読込と同じ候補として表示する。保存は従来どおり「確定して保存」だけ
+  4. 二重取込の判定：朝ブリーフ＝JSONの日付が当日で、「朝ブリーフ」シートにその日付の行が無い場合だけ保存（行があれば手動保存分も含めて何もしない＝ユーザー保存を上書きしない）。週間分析＝対象週が今週で、「週間分析」シートにその週の行が無い場合だけ「案」として出す（確定後は出さない）。同じファイルID・更新日時を検証済みなら再検証しない
+- 要確認・未確認（実装前に決定が必要なもの）：
+  1. 朝情報.md が当日分でないことの「JSON内への記録」の書き方（JSONの項目は変えない決まりのため、「気にかけておきたいこと」に「取得失敗：朝情報.md が当日分ではない」と書く形を提案。未決定）
+  2. 同じ名前の .json がフォルダに複数ある場合の扱い（取り込まず理由を記録する形を提案。未決定）
+  3. GAS が Drive を読むため、権限（Drive の読取・トリガー設置）の再承認が実機で必要になる見込み（appsscript.json には権限の指定が無く、自動で判定される）。未確認
+  4. Desktop版Work（日次予約の後段）が Sheets「タスク」を読めるかは未確認（2026-10-16 記録の未確認事項と同じ）
+- 次工程：ユーザーの承認待ち。承認前に実装へ進まない
+
 ## 2026-10-21 現在作業の締め
 
 - 判定：IS-06継続中／未完了。予約差し替え・実行確認へ進む前に、ここまでの事実を記録して現在作業を締める。IS-06は完了扱いにしない。
