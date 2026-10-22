@@ -1,5 +1,28 @@
 # TASK_CURRENT
 
+## 2026-10-22 追加改修（JSON手渡し自動化）実装・自動テスト
+- 根拠：追加改修指示書_JSON手渡し自動化_v1.0.md（本文 v1.1）§3.3〜§3.5・§5。静的確認はユーザー承認済み（2026-10-22。保存先＝Drive「週間タスクボード」直下 1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z、朝情報が当日分でない場合＝「気にかけておきたいこと」に「取得失敗：朝情報.md が当日分ではない」、同名 .json が複数＝取り込まず理由を記録）。IS-06は継続中のまま
+- 作業開始時のコミット：21b23ee6afbb1b8777581e196f71881c893373bb（claude/gallant-dijkstra-m5gen1）
+- 状態：GitHub実装済み・自動テスト合格。GAS /dev 未反映（push_gas_checked.js 未実行）、時間トリガー未設置、予約（日次の本文差し替え・6:45 への変更、週間分析JSON生成の新設）未実施、Drive・Sheets 未変更、公開版1は不変
+- 実装（サーバー）：
+  - src/Import.js（新規）：Drive「週間タスクボード」直下の 朝ブリーフ.json・週間分析.json を読む。種別判別（日付＋今日の一言／対象週＋見立て、どちらでもない・両方は不可）、サーバー側検証（朝ブリーフ＝画面と同じ変換＋既存 normalizeBrief_、週間分析＝画面 parseHandoff と同じ決まり）、文字の補正1回（BOM・```・Markdown表示の「\」だけ。「\\」の組は変えない）、取込結果をスクリプトのプロパティ（import.brief／import.analysis）に記録
+    - 朝ブリーフ（importBriefFromDrive）：今日の行が「朝ブリーフ」シートにあれば何もしない（手動保存を上書きしない・Drive も読まない）。日付が今日のものだけを既存 saveMorningBrief で保存（同期・履歴の決まりは不変）
+    - 週間分析（importAnalysisFromDrive・getWeeklyDraft）：内容は保存しない。今週分で合格したものだけを「案」として週間画面へ返す。「週間分析」シートに今週の行がある（確定済み）なら出さない
+    - 失敗（ファイルなし・同名複数・古い日付／対象週・解析不能・検証不合格・種別違い・Drive を読めない）は理由を記録して取り込まない
+    - installImportTriggers／removeImportTriggers／listImportTriggers：1時間おきのトリガー2本の設置・削除（実行はユーザー承認後）
+  - src/Brief.js：getMorningBrief が今日の分だけ自動取込の結果（autoImport）を返す（前日の記録は返さない）。保存・同期処理は変更なし
+  - src/Board.js：変更なし（静的確認の一覧では変更予定だったが、案の取得を src/Import.js の getWeeklyDraft に分けたため不要になった）
+- 実装（画面）：src/weekly.html・view_weekly.html（今週は Drive の案を候補として自動表示、結果・失敗理由の表示、貼付欄を「手動取込（非常用）」へ）、src/brief.html・view_brief.html（自動取込の結果・失敗理由の表示、貼付欄を「手動取込（非常用）」へ）。src/css.html は既存の表示部品を使ったため変更なし
+- 指示文・資料：docs/prompts/project_morning_brief.md（出力先を 朝ブリーフ.json へ、朝情報が当日分でない場合の扱い、保存のしかた）、desktop_work_ai_daily.md（前段の後に【後段】として付録Cと同じ文を追加。前段は不変）、project_weekly_analysis.md（出力先を 週間分析.json へ）。JSONの項目・案件キー・取得結果の決まりは不変。docs/BRIEF_FORMAT.md・HANDOFF_FORMAT.md の方式欄。tools/manual_template.html（自動取込・非常用の手動取込の説明）、src/view_manual.html を node tools/build_manual.js で再生成
+- テスト（node tests/*.test.js、18ファイル 325件 合格・失敗0）：新規 import.test.js 29件（種別判別3通り＋両方、貼付保存と同じ結果、二重取込なし、手動保存を上書きしない、ファイルなし・同名複数・古い日付・解析不能・検証不合格・Drive 読取不可、補正、週間分析の案・確定後は出さない・古い対象週、トリガー2本）。prompts.test.js 37件（+6：付録Eの後段＝付録Cと一字一致、保存先・ファイル名が Import.js と一致、朝情報が当日分でない場合など）、brief_json.test.js 16件（+2：自動取込でも同じ結果・同じ拒否）、manual.test.js 10件。既存テストはすべて合格のまま
+- 画面確認（作業環境のブラウザ、PC 1280px・スマホ 390px、google.script.run をテスト用のサーバー処理につないで確認。GAS /dev 実画面ではない）：週間＝案の自動表示・失敗の赤枠表示・確定後は案を出さない、朝ブリーフ＝取込済み・古い日付の失敗（前日の内容を出さない）・記録なし、の6通りでスクリプトエラー0・横はみ出しなし
+- 残件・未確認：
+  1. GAS /dev 反映（node tools/push_gas_checked.js）：ユーザー承認待ち。Drive の読取とトリガー設置の権限が増えるため、反映後に実機で権限の承認をやり直す見込み（未確認）
+  2. 時間トリガー2本の設置（installImportTriggers の実行）：ユーザーの実機承認待ち
+  3. 予約：「【週間タスク】日次AI現在地巡回」の本文を付録Eへ差し替え・開始時刻を 6:45 へ変更、「週間分析JSON生成」の新設（付録B）：ユーザーの実機作業待ち。設定後に docs/WORK_SCHEDULE.md へ実機の結果を記録する
+  4. 予約実行からの .json 保存（§2 の未実証項目）、Desktop版Work（後段）が Sheets「タスク」を読めるか：未確認
+  5. README.md の src 一覧に Import.js は未記載（今回の変更対象外）
+
 ## 2026-10-22 追加改修（JSON手渡し自動化）着手・実装前の静的確認
 - 根拠：docs/implementation/追加改修指示書_JSON手渡し自動化_v1.0.md（本文 v1.1、コミット a629b31）§3.5「実装前の静的確認」。IS-06は継続中のまま（完了扱いにしない）
 - 作業開始時のブランチ・コミット：claude/gallant-dijkstra-m5gen1、6d682514b6a0d34ecec07cd6ba38c75b5b98e5c9（origin と一致）
