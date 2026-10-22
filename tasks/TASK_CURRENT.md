@@ -1,5 +1,14 @@
 # TASK_CURRENT
 
+## 2026-10-22 追加改修（JSON手渡し自動化）GAS /dev 反映
+- 状態：GAS /dev 反映済み・GAS側ソース照合済み。時間トリガー未設置、予約（日次の本文差し替え・6:45、週間分析JSON生成の新設）未実施、/dev 実画面確認・権限の再承認は未実施（いずれもユーザー実機作業待ち）。公開版1は不変。IS-06は継続中のまま
+- 反映したもの：コミット 06c79d9（src/ は実装コミット 0cb6c3d と同じ）。node tools/push_gas_checked.js で実行（作業ツリーclean・マニュアル再生成で差分なし・manual.test.js 10件合格・scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS／rootDir src の確認・clasp push --force（20ファイル、新規 Import.js）・deployment一覧不変の確認まで成功）。実行は Claude Code の作業環境（実PCではない）
+- 準備：作業環境に clasp とログイン情報が無かったため、npm install -g @google/clasp（3.4.1）で導入し、clasp login --no-localhost の対話式でログイン（ユーザーが別画面のブラウザで会社アカウント inamori240@marubishi-group.co.jp の許可を行い、表示された localhost のURLを貼り戻した。10/21 と同じ方式）。ユーザーによる鍵の取り出し・環境設定の変更はしていない。最初の実行は「clasp deployments failed / No credentials found.」で clasp push 前に停止（GAS・deployment は変化なし）
+- 反映前の照合：GAS側ソースを取得（19ファイル）。13ファイルがローカルと一致、違いは Brief.js・brief.html・view_brief.html・view_manual.html・view_weekly.html・weekly.html の6ファイルと Import.js（GAS側に無い）。違う6ファイルはすべて実装前のコミット 27fc183 の src と一致（GAS側だけの変更なし）
+- 反映後の照合：GAS側ソースを取得し直し、src/ の20ファイルすべてがローカルと一致（違い0件）
+- 公開版不変：deployment は反映前後とも @HEAD と @1（IS-00 共通基盤）の2件で変化なし。version は 1 だけ（新しい version・新しいデプロイなし）
+- Drive・Sheets・予約・トリガーは変更していない
+
 ## 2026-10-22 追加改修（JSON手渡し自動化）実装・自動テスト
 - 根拠：追加改修指示書_JSON手渡し自動化_v1.0.md（本文 v1.1）§3.3〜§3.5・§5。静的確認はユーザー承認済み（2026-10-22。保存先＝Drive「週間タスクボード」直下 1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z、朝情報が当日分でない場合＝「気にかけておきたいこと」に「取得失敗：朝情報.md が当日分ではない」、同名 .json が複数＝取り込まず理由を記録）。IS-06は継続中のまま
 - 作業開始時のコミット：21b23ee6afbb1b8777581e196f71881c893373bb（claude/gallant-dijkstra-m5gen1）
