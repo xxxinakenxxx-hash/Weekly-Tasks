@@ -293,5 +293,51 @@ t('週間分析の指示文：案件キーは場所だけ・2つの形（固定�
   assert.ok(wa.includes('タスク名や他の案件から推測して書かない'));
 });
 
+// ---- 2026-10-22 JSON手渡しの自動化（追加改修指示書 JSON手渡し自動化 v1.1）：JSONは画面に出さず Drive のファイルへ保存する ----
+const morning = block(read('docs/prompts/project_morning_brief.md'));
+const analysisP = block(read('docs/prompts/project_weekly_analysis.md'));
+const importSrc = read('src/Import.js');
+t('日次予約（付録E）：前段の巡回のあとに【後段】があり、後段の文は朝ブリーフの指示文（付録C）と一字も違わない', () => {
+  const i = daily.indexOf('\n【後段】続けて朝ブリーフを作る');
+  assert.ok(i > 0, '後段がない');
+  assert.ok(daily.slice(0, i).endsWith('前回あって今回見つからない案件を報告する。\n'), '前段の最後の文のあとに続いていない');
+  assert.ok(daily.endsWith('\n\n' + morning), '後段の文が付録Cと一致しない');
+  assert.ok(daily.slice(i).includes('上の巡回の決まり（案件の見つけ方・判定基準・書式）は、後段では使わない'));
+  // 前段の判定基準は週次と同じまま（後段を足しても変わらない）
+  assert.strictEqual(criteria(weekly), criteria(daily));
+});
+t('朝ブリーフの指示文：「朝ブリーフ.json」へ保存し、画面に出さない（上書き・.jsonのまま・同じ名前が複数なら保存しない・開き直して確かめる）', () => {
+  assert.ok(morning.includes('今日の朝ブリーフを作り、Google Drive「週間タスクボード」フォルダ直下の「朝ブリーフ.json」へ保存してください。JSONは画面に表示しないでください。'));
+  assert.ok(morning.includes('既存の「朝ブリーフ.json」があれば、その同じファイルに上書きする'));
+  assert.ok(morning.includes('ファイルの種類は JSON（.json）のまま保存する。Googleドキュメントに変換しない'));
+  assert.ok(morning.includes('同じ名前の「朝ブリーフ.json」が2つ以上ある場合は、保存も削除もせず、そのことを報告する'));
+  assert.ok(morning.includes('保存したあと「朝ブリーフ.json」を開き直し、JSONとして読み込めること、「日付」が今日であることを確かめる'));
+  assert.ok(morning.includes('JSONの本文は報告に貼らない'));
+  assert.ok(!/結果は次のJSON形式「だけ」で出力/.test(morning), '画面に出力する旧文が残っている');
+});
+t('朝ブリーフの指示文：朝情報.md が当日分でないときは朝情報を使わず「取得失敗：朝情報.md が当日分ではない」と書く（§7-1、2026-10-22 確定）', () => {
+  assert.ok(morning.includes('朝情報.md の「日付：」が今日でない場合'));
+  assert.ok(morning.includes('「気にかけておきたいこと」に「取得失敗：朝情報.md が当日分ではない」と書く（前日の予定を今日の予定として書かない）'));
+});
+t('週間分析の指示文：「週間分析.json」へ保存し、画面に出さない（上書き・.jsonのまま・同じ名前が複数なら保存しない・開き直して確かめる）', () => {
+  assert.ok(analysisP.includes('今週の週間分析をして、Google Drive「週間タスクボード」フォルダ直下の「週間分析.json」へ保存してください。JSONは画面に表示しないでください。'));
+  assert.ok(analysisP.includes('既存の「週間分析.json」があれば、その同じファイルに上書きする'));
+  assert.ok(analysisP.includes('ファイルの種類は JSON（.json）のまま保存する。Googleドキュメントに変換しない'));
+  assert.ok(analysisP.includes('同じ名前の「週間分析.json」が2つ以上ある場合は、保存も削除もせず、そのことを報告する'));
+  assert.ok(analysisP.includes('「対象週」が今週の月曜であることを確かめる'));
+  assert.ok(!/結果は次のJSON形式「だけ」で出力/.test(analysisP), '画面に出力する旧文が残っている');
+});
+t('保存先・ファイル名が、取り込む側（src/Import.js）と同じ（週間タスクボード直下。Obsidian Vault には保存しない）', () => {
+  assert.ok(importSrc.includes("FOLDER_ID: '1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z'"));
+  assert.ok(importSrc.includes("BRIEF_FILE: '朝ブリーフ.json'") && importSrc.includes("ANALYSIS_FILE: '週間分析.json'"));
+  assert.ok(morning.includes('「週間タスク」フォルダには保存しないでください'));
+  assert.ok(analysisP.includes('「週間タスク」フォルダ（Obsidian Vault）には保存しないでください'));
+});
+t('JSONの中身の決まり（項目・案件キー・取得結果の区別・「\\」の重ね書き）は、保存先の変更で変わっていない', () => {
+  ['"日付": "（今日 yyyy-MM-dd）"', '"今日の一言"', '"AI案件現在地": [', '取得失敗の案件を「確認済み」に変えない', '案件名（タスク名）で対応付けない'].forEach(x => assert.ok(morning.includes(x), x));
+  ['"対象週": "（今週の月曜 yyyy-MM-dd）"', '"見立て"', '"コーション"', '"タスク案"', '必ずすべてタスク案に出す'].forEach(x => assert.ok(analysisP.includes(x), x));
+  [morning, analysisP].forEach(s => assert.ok(s.includes('JSONでは「\\\\」と2つ重ねて書く')));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

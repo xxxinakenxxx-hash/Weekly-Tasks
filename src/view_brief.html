@@ -9,6 +9,7 @@
 </div>
 
 <p id="br-stale" class="wk-stale" role="alert" hidden></p>
+<p id="br-auto" class="wk-note wk-excluded" role="status" hidden></p>
 <p id="br-loading" class="wk-muted">読み込み中…</p>
 <p id="br-empty" class="wk-muted" hidden>この日の朝ブリーフはまだ保存されていません。</p>
 <p id="br-preview-note" class="wk-note wk-excluded" hidden>読み込んだ朝ブリーフを表示しています。まだ保存されていません。</p>
@@ -69,7 +70,8 @@
 </div>
 
 <details class="wk-panel" id="br-import">
-  <summary>ChatGPT Project の朝ブリーフを読み込む</summary>
+  <summary>手動取込（非常用）：朝ブリーフのJSONを貼り付けて読み込む</summary>
+  <p class="wk-muted">通常は、Drive の 朝ブリーフ.json が自動で取り込まれます。自動取込ができないときだけ使います。</p>
   <textarea id="br-import-input" class="wk-import-input" rows="6" placeholder="ChatGPT Projectが出力した朝ブリーフのJSONを貼り付けてください"></textarea>
   <button type="button" id="br-import-load" class="btn btn-primary">読み込む</button>
 </details>

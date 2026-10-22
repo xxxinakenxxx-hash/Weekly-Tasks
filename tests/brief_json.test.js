@@ -123,7 +123,7 @@ t('指示文：「\\」を「\\\\」と重ねて書く決まりと例（例は�
   assert.ok(prompt.includes('文字列の中の「\\」（Windowsの場所の区切り）は、JSONでは「\\\\」と2つ重ねて書く'));
   assert.ok(prompt.includes('"C:\\\\Users\\\\inamori240\\\\Documents\\\\sample-project\\\\tasks\\\\TASK_CURRENT.md"'));
 });
-t('指示文：出力前の確認（JSONとして読める・必須項目・案件キーの形・すべての案件・取得結果を変えない）', () => {
+t('指示文：保存前の確認（JSONとして読める・必須項目・案件キーの形・すべての案件・取得結果を変えない）', () => {
   ['JSONとして読み込める', '「日付」「今日の一言」「今日の流れ」「今日優先すること」「気にかけておきたいこと」「もう片づいていること」「未完了・持越し」がそろっている',
     '「案件キー」は、空か、上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）', 'AI案件_日次現在地.md のすべての案件（件数は決まっていない）が入っていて、各件の「案件キー」が AI案件_日次現在地.md のその案件の「TASK_CURRENT.md：」の値と一字も違わない（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）',
     '「取得結果」は AI案件_日次現在地.md の値のまま', '取得失敗の案件を「確認済み」に変えない'].forEach(x => assert.ok(prompt.includes(x), x));
@@ -149,5 +149,30 @@ t('6件目以降：新しい案件の案件キーに説明文が付いた場合�
   const text = json1014(ids, d => d['AI案件現在地'].push({ 案件キー: 'https://github.com/xxxinakenxxx-hash/repo-x/blob/HEAD/tasks/TASK_CURRENT.md（GitHub連携で取得）', taskId: '', 案件名: 'repo-x', 取得結果: '取得失敗', 現在地: '', 取得日時: AT, 内容: 'x' }));
   assert.throws(() => g.saveMorningBrief(toServer(text)), /6件目：案件キーは TASK_CURRENT\.md の場所です/);
 });
+// ---- 2026-10-22 JSON手渡しの自動化：同じJSONを Drive の 朝ブリーフ.json から自動取込しても、貼付保存と同じ結果になる ----
+t('自動取込：10/14 の内容のJSONを 朝ブリーフ.json から取り込むと、貼付保存と同じく確認済み4件・取得失敗1件を記録する', () => {
+  const { g, ids } = setup();
+  const fixed = new Date(D + 'T07:00:00+09:00').getTime();
+  g.Date = class extends Date { constructor(...a) { if (a.length) super(...a); else super(fixed); } };
+  g.__drive.files.push({ id: 'F1', name: '朝ブリーフ.json', text: json1014(ids), updated: new Date(D + 'T06:50:00+09:00') });
+  const rec = g.importBriefFromDrive();
+  assert.strictEqual(rec.result, '取込済み');
+  assert.strictEqual(JSON.stringify(rec.aiSync), JSON.stringify({ synced: 4, recorded: 1, unchanged: 0, skipped: 0 }));
+  assert.strictEqual(row(g, ids.machine).aiPosition, 'PH1-FIX-03B 実画面で案件一覧速度の再確認待ち。第1段階MVP完了判定OK');
+  assert.ok(String(row(g, ids.weekly).aiLatestResult).startsWith('取得失敗：'));
+});
+t('自動取込：説明文が混入した案件キー（10/14 の5件目）は自動取込でも受け付けず、何も書かない', () => {
+  const { g, ids } = setup();
+  const fixed = new Date(D + 'T07:00:00+09:00').getTime();
+  g.Date = class extends Date { constructor(...a) { if (a.length) super(...a); else super(fixed); } };
+  g.__drive.files.push({ id: 'F1', name: '朝ブリーフ.json', text: json1014(ids, d => { d['AI案件現在地'][4]['案件キー'] = MIXED; }), updated: new Date(D + 'T06:50:00+09:00') });
+  const h = JSON.stringify(g.__sheets['タスク'].data);
+  const rec = g.importBriefFromDrive();
+  assert.strictEqual(rec.result, '取込失敗');
+  assert.match(rec.reason, /案件キーは TASK_CURRENT\.md の場所です/);
+  assert.strictEqual(JSON.stringify(g.__sheets['タスク'].data), h);
+  assert.strictEqual(g.getMorningBrief(D).brief, null);
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

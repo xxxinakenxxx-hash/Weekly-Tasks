@@ -17,7 +17,9 @@ function getMorningBrief(date) {
       if (row.date === d) brief = rowToBrief_(row);
     });
   }
-  return { date: d, today: currentDate_(), brief: brief, loadedAt: nowText_() };
+  // JSON手渡しの自動化：今日の分は、Drive の 朝ブリーフ.json の自動取込の結果（成功・失敗と理由）も返す
+  var today = currentDate_();
+  return { date: d, today: today, brief: brief, autoImport: d === today ? briefImportStatus_() : null, loadedAt: nowText_() };
 }
 
 /**

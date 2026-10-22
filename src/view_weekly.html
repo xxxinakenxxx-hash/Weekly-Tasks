@@ -45,8 +45,10 @@
   <ol id="wk-focus"></ol>
 </section>
 
+<p id="wk-auto" class="wk-note wk-excluded" role="status" hidden></p>
 <details class="wk-panel" id="wk-import">
-  <summary>ChatGPT Project の分析結果を読み込む</summary>
+  <summary>手動取込（非常用）：分析結果のJSONを貼り付けて読み込む</summary>
+  <p class="wk-muted">通常は、Drive の 週間分析.json が自動で「案」として表示されます。自動取込ができないときだけ使います。</p>
   <textarea id="wk-import-input" class="wk-import-input" rows="6" placeholder="ChatGPT Projectが出力したJSONを貼り付けてください"></textarea>
   <button type="button" id="wk-import-load" class="btn btn-primary">読み込む</button>
   <p class="wk-muted">読み込んだタスク案は「候補」として下のボードに表示されます。確定するまで保存されません。</p>

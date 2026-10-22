@@ -42,6 +42,10 @@ function load(opts = {}) {
     insertSheet: n => { sheets[n] = makeSheet(n); return sheets[n].api; }
   };
   let uuid = 0;
+  // JSON手渡しの自動化：Drive のファイル（{ id, name, text, updated }）・スクリプトのプロパティ・トリガー
+  const drive = { files: [], folderIds: [], error: null };
+  const props = {};
+  const triggers = [];
   const ctx = {
     console, Date, JSON, Object, String, Number, Math, Error,
     SpreadsheetApp: {
@@ -53,13 +57,41 @@ function load(opts = {}) {
       formatDate: (d, tz, f) => fmt(d, f)
     },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
-    ScriptApp: { getService: () => ({ getUrl: () => 'https://example/exec' }) },
+    ScriptApp: {
+      getService: () => ({ getUrl: () => 'https://example/exec' }),
+      getProjectTriggers: () => triggers.slice(),
+      deleteTrigger: t => { const i = triggers.indexOf(t); if (i >= 0) triggers.splice(i, 1); },
+      newTrigger: fn => {
+        const spec = { fn };
+        const b = { timeBased: () => b, everyHours: n => { spec.everyHours = n; return b; }, create: () => { const t = { spec, getHandlerFunction: () => fn }; triggers.push(t); return t; } };
+        return b;
+      }
+    },
+    DriveApp: {
+      getFolderById: id => {
+        if (drive.error) throw new Error(drive.error);
+        drive.folderIds.push(id);
+        return {
+          getFilesByName: name => {
+            const list = drive.files.filter(f => f.folderId === undefined || f.folderId === id).filter(f => f.name === name);
+            let i = 0;
+            return { hasNext: () => i < list.length, next: () => { const f = list[i++]; return { getId: () => f.id, getLastUpdated: () => f.updated, getBlob: () => ({ getDataAsString: () => f.text }) }; } };
+          }
+        };
+      }
+    },
+    PropertiesService: {
+      getScriptProperties: () => ({ getProperty: k => (props.hasOwnProperty(k) ? props[k] : null), setProperty: (k, v) => { props[k] = String(v); } })
+    },
     HtmlService: {}
   };
   vm.createContext(ctx);
   const src = path.join(__dirname, '..', 'src');
-  ['Config.js', 'Schema.js', 'Store.js', 'Board.js', 'Brief.js', 'Code.js', 'Is00Test.js', 'Migration.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
+  ['Config.js', 'Schema.js', 'Store.js', 'Board.js', 'Brief.js', 'Import.js', 'Code.js', 'Is00Test.js', 'Migration.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
   ctx.__sheets = sheets;
+  ctx.__drive = drive;
+  ctx.__props = props;
+  ctx.__triggers = triggers;
   return ctx;
 }
 module.exports = { load };

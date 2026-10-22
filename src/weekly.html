@@ -107,8 +107,8 @@
       return data;
     }
 
-    function importAnalysis() {
-      var data = parseHandoff($('wk-import-input').value);
+    // 読み込んだ分析結果（貼付の手動取込、または Drive の 週間分析.json の「案」）を候補として表示する
+    function importAnalysis(data) {
       if (data['対象週'] !== state.week) {
         throw new Error('分析結果の対象週（' + data['対象週'] + '）が表示中の週（' + state.week + '）と違います。');
       }
@@ -696,6 +696,7 @@
         $('wk-board').hidden = false;
         showLoaded(res.loadedAt);
         render();
+        loadDraft(res.targetWeek);
       }, function () {
         $('wk-loading').hidden = true;
         var st = $('wk-stale');
@@ -713,12 +714,38 @@
         }
       });
     }
+    // ---- JSON手渡しの自動化：Drive の 週間分析.json（検証に合格した今週分）を「案」として表示する。保存は「確定して保存」だけ ----
+    function showAuto(rec) {
+      var p = $('wk-auto');
+      p.hidden = true;
+      if (!rec || rec.result === '確定済み') return;
+      if (rec.result === '案あり') {
+        p.className = 'wk-note wk-excluded';
+        p.textContent = 'Drive の 週間分析.json（' + rec.fileUpdated + ' 更新）を「案」として表示しています（タスク案 ' + rec.count + '件' + (rec.corrected ? '・文字の補正あり' : '') + '）。内容を確認して「確定して保存」を押してください。';
+      } else {
+        p.className = 'wk-stale';
+        p.textContent = '週間分析.json を「案」として表示できません（' + rec.checkedAt + ' 確認）：' + rec.reason + '。下の「手動取込（非常用）」で読み込めます。';
+      }
+      p.hidden = false;
+    }
+    function loadDraft(week) {
+      if (hasPending()) return;
+      App.callServer('getWeeklyDraft', [week], function (res) {
+        if (res.targetWeek !== state.week) return;
+        showAuto(res.status);
+        if (!res.draft || hasPending()) return;
+        try { importAnalysis(parseHandoff(JSON.stringify(res.draft))); } catch (e) {
+          showAuto({ result: '取込失敗', checkedAt: res.status ? res.status.checkedAt : '', reason: '画面での検証に不合格：' + e.message });
+        }
+      }, function () { showAuto(null); });
+    }
     function hasPending() { return state.candidates.length > 0 || changedCount() > 0 || state.analysisDirty; }
     function moveWeek(n) {
       if (hasPending() && !window.confirm('未確定の変更があります。破棄して移動しますか？')) return;
       state.candidates = [];
       state.refresh = {};
       showExcluded([]);
+      $('wk-auto').hidden = true;
       // 見立て・コーションは読み込み時に「週間分析」シートの保存済みの内容を表示する
       state.analysis = null;
       state.analysisDirty = false;
@@ -748,6 +775,7 @@
         state.analysisDirty = false;
         state.routeOther = {};
         state.candidates = [];
+        $('wk-auto').hidden = true;
         showLoaded(res.loadedAt);
         render();
         var s = $('wk-saved');
@@ -761,7 +789,7 @@
     $('wk-reload').addEventListener('click', function () { moveWeek(0); });
     $('wk-commit').addEventListener('click', commit);
     $('wk-import-load').addEventListener('click', function () {
-      try { importAnalysis(); App.clearError(); } catch (e) { App.showError(e.message); }
+      try { importAnalysis(parseHandoff($('wk-import-input').value)); App.clearError(); } catch (e) { App.showError(e.message); }
     });
     window.addEventListener('beforeunload', function (e) { if (hasPending()) { e.preventDefault(); e.returnValue = ''; } });
 

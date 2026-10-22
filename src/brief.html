@@ -186,6 +186,27 @@
       $('br-saved-at').textContent = isPreview ? '' : '保存日時：' + brief.savedAt;
     }
 
+    // JSON手渡しの自動化：今日の分の自動取込の結果（失敗は理由とあわせて目立たせる。前の日の内容を今日の分として見せない）
+    function showAuto(res) {
+      var p = $('br-auto'), rec = res.autoImport;
+      p.hidden = true;
+      if (res.date !== res.today) return;
+      if (!rec) {
+        if (res.brief) return;
+        p.className = 'wk-note wk-excluded';
+        p.textContent = '今日の朝ブリーフの自動取込の記録はまだありません（Drive の 朝ブリーフ.json を1時間おきに確認します）。';
+      } else if (rec.result === '取込済み') {
+        p.className = 'wk-note wk-excluded';
+        p.textContent = '自動取込：' + rec.savedAt + ' に Drive の 朝ブリーフ.json（' + rec.fileUpdated + ' 更新）から取り込みました' + (rec.corrected ? '（文字の補正あり）' : '') + '。';
+      } else if (rec.result === '何もしない') {
+        return;
+      } else {
+        p.className = 'wk-stale';
+        p.textContent = '自動取込できませんでした（' + rec.checkedAt + ' 確認）：' + rec.reason + '。下の「手動取込（非常用）」で読み込めます。';
+      }
+      p.hidden = false;
+    }
+
     function load(date) {
       state.preview = null;
       $('br-loading').hidden = false;
@@ -195,10 +216,12 @@
         $('br-stale').hidden = true;
         $('br-ai-sync').hidden = true;
         render(res.brief, false);
+        showAuto(res);
         loadTasks();
       }, function () {
         // 取得失敗時、別の日の朝ブリーフを表示し続けない（IS-05）
         $('br-loading').hidden = true;
+        $('br-auto').hidden = true;
         var st = $('br-stale');
         st.hidden = false;
         if (state.shown === date) {
@@ -240,6 +263,7 @@
         $('br-stale').hidden = true;
         $('br-save').disabled = false;
         render(res.brief, false);
+        $('br-auto').hidden = true;
         $('br-saved').textContent = '保存しました。';
         $('br-saved').hidden = false;
         showSync(res.aiSync);
