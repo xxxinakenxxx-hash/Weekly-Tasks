@@ -2,7 +2,7 @@
 
 ## 2026-10-23 追加改修（JSON手渡し自動化）初回実機確認（日次）
 - 判定：日次の全経路（予約 → 朝ブリーフ.json 保存 → GAS 自動取込 → 朝ブリーフ画面表示）が成功（ユーザー実機による。コード変更なし）。IS-06は継続中のまま
-- 実機設定（ユーザー実施、docs/WORK_SCHEDULE.md に記録）：予約「【週間タスク】日次AI現在地巡回」を付録Eへ差し替え・平日 6:45・実行先チャット固定。新設予約「週間分析JSON生成」毎週月曜 7:00・付録B。GAS 時間トリガー2本（importBriefFromDrive／importAnalysisFromDrive、1時間おき）を 2026-10-22 に設置
+- 実機設定（ユーザー実施、docs/WORK_SCHEDULE.md に記録）：予約「【週間タスク】日次AI現在地巡回」を付録Eへ差し替え・平日 6:45・実行先チャット固定。新設予約「【週間タスク】週間分析JSON生成」毎週月曜 7:00・付録B。GAS 時間トリガー2本（importBriefFromDrive／importAnalysisFromDrive、1時間おき）を 2026-10-22 に設置
 - 経過（2026-10-23）：
   - 差し替え保存のとき予約が一時停止のままで、6:45 は実行されなかった。編集画面の「保存」は一時停止中の予約を再開しない。2026-10-22 の手順書に「再開の確認」が無かったことが原因
   - GAS は朝ブリーフ画面に「ファイルがありません」と表示（前回値の誤表示なし）
@@ -14,7 +14,7 @@
   - (c) 週次の初回確認（2026-10-26（月）：5:45 巡回 → 7:00 週間分析JSON → 週間画面の「案」表示）
 
 ## 2026-10-22 追加改修（JSON手渡し自動化）GAS /dev 反映
-- 状態：GAS /dev 反映済み・GAS側ソース照合済み。時間トリガー未設置、予約（日次の本文差し替え・6:45、週間分析JSON生成の新設）未実施、/dev 実画面確認・権限の再承認は未実施（いずれもユーザー実機作業待ち）。公開版1は不変。IS-06は継続中のまま
+- 状態：GAS /dev 反映済み・GAS側ソース照合済み。時間トリガー未設置、予約（日次の本文差し替え・6:45、【週間タスク】週間分析JSON生成の新設）未実施、/dev 実画面確認・権限の再承認は未実施（いずれもユーザー実機作業待ち）。公開版1は不変。IS-06は継続中のまま
 - 反映したもの：コミット 06c79d9（src/ は実装コミット 0cb6c3d と同じ）。node tools/push_gas_checked.js で実行（作業ツリーclean・マニュアル再生成で差分なし・manual.test.js 10件合格・scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS／rootDir src の確認・clasp push --force（20ファイル、新規 Import.js）・deployment一覧不変の確認まで成功）。実行は Claude Code の作業環境（実PCではない）
 - 準備：作業環境に clasp とログイン情報が無かったため、npm install -g @google/clasp（3.4.1）で導入し、clasp login --no-localhost の対話式でログイン（ユーザーが別画面のブラウザで会社アカウント inamori240@marubishi-group.co.jp の許可を行い、表示された localhost のURLを貼り戻した。10/21 と同じ方式）。ユーザーによる鍵の取り出し・環境設定の変更はしていない。最初の実行は「clasp deployments failed / No credentials found.」で clasp push 前に停止（GAS・deployment は変化なし）
 - 反映前の照合：GAS側ソースを取得（19ファイル）。13ファイルがローカルと一致、違いは Brief.js・brief.html・view_brief.html・view_manual.html・view_weekly.html・weekly.html の6ファイルと Import.js（GAS側に無い）。違う6ファイルはすべて実装前のコミット 27fc183 の src と一致（GAS側だけの変更なし）
@@ -25,7 +25,7 @@
 ## 2026-10-22 追加改修（JSON手渡し自動化）実装・自動テスト
 - 根拠：追加改修指示書_JSON手渡し自動化_v1.0.md（本文 v1.1）§3.3〜§3.5・§5。静的確認はユーザー承認済み（2026-10-22。保存先＝Drive「週間タスクボード」直下 1MrAlSf4NoaSTgQYQ1uNVQf-anSaO518Z、朝情報が当日分でない場合＝「気にかけておきたいこと」に「取得失敗：朝情報.md が当日分ではない」、同名 .json が複数＝取り込まず理由を記録）。IS-06は継続中のまま
 - 作業開始時のコミット：21b23ee6afbb1b8777581e196f71881c893373bb（claude/gallant-dijkstra-m5gen1）
-- 状態：GitHub実装済み・自動テスト合格。GAS /dev 未反映（push_gas_checked.js 未実行）、時間トリガー未設置、予約（日次の本文差し替え・6:45 への変更、週間分析JSON生成の新設）未実施、Drive・Sheets 未変更、公開版1は不変
+- 状態：GitHub実装済み・自動テスト合格。GAS /dev 未反映（push_gas_checked.js 未実行）、時間トリガー未設置、予約（日次の本文差し替え・6:45 への変更、【週間タスク】週間分析JSON生成の新設）未実施、Drive・Sheets 未変更、公開版1は不変
 - 実装（サーバー）：
   - src/Import.js（新規）：Drive「週間タスクボード」直下の 朝ブリーフ.json・週間分析.json を読む。種別判別（日付＋今日の一言／対象週＋見立て、どちらでもない・両方は不可）、サーバー側検証（朝ブリーフ＝画面と同じ変換＋既存 normalizeBrief_、週間分析＝画面 parseHandoff と同じ決まり）、文字の補正1回（BOM・```・Markdown表示の「\」だけ。「\\」の組は変えない）、取込結果をスクリプトのプロパティ（import.brief／import.analysis）に記録
     - 朝ブリーフ（importBriefFromDrive）：今日の行が「朝ブリーフ」シートにあれば何もしない（手動保存を上書きしない・Drive も読まない）。日付が今日のものだけを既存 saveMorningBrief で保存（同期・履歴の決まりは不変）
@@ -41,7 +41,7 @@
 - 残件・未確認：
   1. GAS /dev 反映（node tools/push_gas_checked.js）：ユーザー承認待ち。Drive の読取とトリガー設置の権限が増えるため、反映後に実機で権限の承認をやり直す見込み（未確認）
   2. 時間トリガー2本の設置（installImportTriggers の実行）：ユーザーの実機承認待ち
-  3. 予約：「【週間タスク】日次AI現在地巡回」の本文を付録Eへ差し替え・開始時刻を 6:45 へ変更、「週間分析JSON生成」の新設（付録B）：ユーザーの実機作業待ち。設定後に docs/WORK_SCHEDULE.md へ実機の結果を記録する
+  3. 予約：「【週間タスク】日次AI現在地巡回」の本文を付録Eへ差し替え・開始時刻を 6:45 へ変更、「【週間タスク】週間分析JSON生成」の新設（付録B）：ユーザーの実機作業待ち。設定後に docs/WORK_SCHEDULE.md へ実機の結果を記録する
   4. 予約実行からの .json 保存（§2 の未実証項目）、Desktop版Work（後段）が Sheets「タスク」を読めるか：未確認
   5. README.md の src 一覧に Import.js は未記載（今回の変更対象外）
 
