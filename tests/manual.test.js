@@ -40,5 +40,12 @@ t('?view=manual でマニュアルを開ける。画面の「操作マニュア�
   assert.strictEqual(url, 'https://example/dev');
   assert.ok(fs.readFileSync(path.join(__dirname, '..', 'src/index.html'), 'utf8').includes('href="<?= ctx.appUrl ?>?view=manual"'));
 });
+t('週間入口拡充・現在地同期改善：マニュアルにTODOタブ・今週やること・案件キーの貼り付けの説明があり、通常業務の収集操作は終了と明記している', () => {
+  assert.ok(html.includes('<h2>あとでやることを書く（TODOタブ）</h2>') && html.includes('画面上部の「TODO」タブを押します'));
+  assert.ok(html.includes('<h2>今週やることを書く</h2>') && html.includes('朝ブリーフ画面では読むだけです'));
+  assert.ok(html.includes('<h2>案件キーを入れる（AI案件）</h2>') && html.includes('https://github.com/xxxinakenxxx-hash/Aegis-Mesh'));
+  assert.ok(html.includes('1. （終了）Web版Workで通常業務を集める'));
+  assert.ok(html.includes('<p class="note">この指示文の運用は終了（週間入口拡充により週間分析へ1本化）。</p>'));
+});
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

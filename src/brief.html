@@ -311,6 +311,12 @@
           tt.appendChild(lt);
         }
       }
+      // 今週やること（追加実装 週間入口拡充）：入力がある場合だけ短く表示する。朝ブリーフ側は読み取りのみ（編集は週間タスク画面の「詳細・編集」）
+      var wpText = String(t.weekPlan || '').trim();
+      if (wpText) {
+        var one = wpText.replace(/\s*[\r\n]+\s*/g, ' ');
+        tt.appendChild(mk('span', 'br-task-weekplan', '今週やること：' + (one.length > 60 ? one.slice(0, 60) + '…' : one)));
+      }
       sum.appendChild(tt);
       // 例外情報がある場合は区分を目印で出す（IS-05）
       EXCEPTIONS.filter(function (e) { return new RegExp('(^|／)' + e + '：').test(String(t.exception || '')); })
@@ -319,6 +325,7 @@
       box.appendChild(sum);
 
       var body = mk('div', 'br-task-body');
+      if (wpText) body.appendChild(mk('p', 'wk-card-weekplan', '今週やること（週間タスク画面で編集）：' + wpText));
       var row = mk('div', 'wk-fields');
       var status = mk('select'); status.setAttribute('aria-label', '状態');
       STATUS.forEach(function (v) { var o = mk('option', '', v); o.value = v; status.appendChild(o); });

@@ -1,0 +1,34 @@
+<div class="wk-head">
+  <h2 class="view-title">TODO</h2>
+  <div class="wk-nav">
+    <button type="button" id="td-reload" class="btn">再読込</button>
+  </div>
+</div>
+
+<p id="td-stale" class="wk-stale" role="alert" hidden></p>
+<p id="td-sync" class="wk-note wk-excluded" role="status" hidden></p>
+
+<section class="wk-panel" aria-labelledby="td-add-heading">
+  <h3 id="td-add-heading">ストックに追加</h3>
+  <p class="wk-muted">思いついたこと・あとでやることを1行で書きます。カレンダーのToDoリスト（Google ToDo）に書いた項目は、この画面を開いたときと1時間おきに自動で入ります。毎週月曜の週間分析が「未採用」の項目を読み、週間タスク画面の候補カードに出します。</p>
+  <label class="wk-record-field"><span>内容（必須）</span><input type="text" id="td-input" class="wk-title" aria-label="TODO 内容"></label>
+  <label class="wk-record-field"><span>希望週（任意。やりたい週の月曜日。空欄でもかまいません）</span><input type="date" id="td-week" class="td-week" aria-label="TODO 希望週"></label>
+  <div class="wk-add-actions">
+    <button type="button" id="td-add" class="btn btn-primary">追加</button>
+  </div>
+  <p id="td-msg" class="wk-saved" role="status" hidden></p>
+</section>
+
+<section class="wk-panel" aria-labelledby="td-list-title">
+  <h3 id="td-list-title">未採用のTODO</h3>
+  <p id="td-loading" class="wk-muted">読み込み中…</p>
+  <p id="td-empty" class="wk-muted" hidden>未採用のTODOはありません。</p>
+  <div id="td-list"></div>
+</section>
+
+<details class="wk-panel" id="td-done-wrap">
+  <summary id="td-done-title">採用済み・取り下げ</summary>
+  <p class="wk-muted">採用済みは、週間タスク画面で採用して「確定して保存」を押した項目です（タスク名がここの内容と同じものが採用済みになります）。</p>
+  <div id="td-done"></div>
+</details>
+<p id="td-loaded-at" class="wk-muted wk-loaded-at"></p>

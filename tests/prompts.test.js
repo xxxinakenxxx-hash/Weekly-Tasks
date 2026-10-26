@@ -339,5 +339,126 @@ t('JSONの中身の決まり（項目・案件キー・取得結果の区別・�
   [morning, analysisP].forEach(s => assert.ok(s.includes('JSONでは「\\\\」と2つ重ねて書く')));
 });
 
+// ---- 2026-10-26 追加改修「現在地同期改善」（項目1・3・4）：日時が新しい記載を正／実装前の案件は CHAT_CURRENT 冒頭定型欄／日次は AI案件.md を読んでよい ----
+const critC = criteria(weekly);
+t('現在地同期改善 項目1：判定基準C＝日時が新しい記載を正（情報源・日時の取り方・確認済み・食い違い検出の注記）。週次・日次で同じ', () => {
+  assert.strictEqual(criteria(weekly), criteria(daily));
+  ['C. 判定の区別（2026-10-23 改訂：日時が新しい記載を正とする）', '日時の比較（現在地を決めるとき、最初に行う）：',
+    '情報源（TASK_CURRENT.md、実装前の案件の CHAT_CURRENT.md 冒頭定型欄、Drive 資料、開発履歴のコミット、前回の結果）の記載が食い違う場合は、各記載の日時（日付＋時刻）を比べ、最も新しい記載を現在地として採り、取得結果は「確認済み」（週次は「情報源整合：一致」）とする',
+    '日時は、コミットは秒まで、台帳・定型欄は記載の日付＋取得できる更新時刻で比べる',
+    '古い方との食い違いは、注記（日次は「内容」、週次は「要確認」）に「食い違い検出：（何と何がどう違うか）」と書く'].forEach(x => assert.ok(critC.includes(x), x));
+});
+t('現在地同期改善 項目1：日時がどの情報源からも取れない・最も新しい記載が同時刻で中身が違う場合だけ「不一致／要確認」で現在地を空にする', () => {
+  const line = critC.split('\n').find(l => l.startsWith('  - 実際の矛盾：'));
+  assert.ok(line.includes('日時の比較で決められない場合（食い違う記載のどれからも日時が取れない場合、または最も新しい記載が同時刻で中身が違う場合）だけ'));
+  assert.ok(line.includes('→「不一致」（判断材料が足りず決められないときは「要確認」）。現在地は空欄にし、何と何が食い違うかを書く'));
+  // 結果の区別は従来の4つのまま
+  ['  - 実際の矛盾：', '  - 古い記録・古い資料：', '  - チャット未確認：', '  - 取得失敗：'].forEach(x => assert.ok(critC.includes(x), x));
+  assert.ok(critC.includes('結果は次の4つのどれかに分ける。'));
+});
+t('現在地同期改善 項目1：判定基準B（前回より前の工程へ戻る場合は明記された巻き戻しだけ採る）の安全装置は変えず、日時優先より先に効く', () => {
+  assert.ok(critC.includes('判定基準 B（前回より前の工程へ戻る場合は、明記された巻き戻しだけ採る）は変えない。日時が新しくても、前回より前の工程を示す記載は B に従う'));
+  [weekly, daily].forEach(s => {
+    assert.ok(s.includes('  - 前回より前の工程になる場合は、根拠が台帳の冒頭の欄で前の工程に戻したと明記されているときだけ採る（根拠を書く）。そうでなければ今回の判断を採らず、前回の現在地を書いたうえで「前回からの変化：要確認（前回より前の工程の記載あり：その記載）」とする。'));
+  });
+});
+t('現在地同期改善 項目3：実装前の案件は CHAT_CURRENT 冒頭定型欄を根拠に加え日時比較。実装中以降は TASK_CURRENT だけ。定型欄なしは規約3-1と同じ文を注記', () => {
+  const A = critC.slice(critC.indexOf('A. 現在地の決め方'), critC.indexOf('B. 前回の現在地との照合'));
+  assert.ok(A.includes('実装前の案件（TASK_CURRENT.md の冒頭の欄が未着手・指示未発行・企画検討・正本整備など、実装前を示す案件）は、同じリポジトリの tasks/CHAT_CURRENT.md 冒頭の定型欄（最初の見出しの直後の「段階」「現在地」「最終更新」の3行。規約3-1）を現在地の根拠に加え'));
+  assert.ok(A.includes('判定基準 C の日時の比較を行い、新しい方を現在地に採る'));
+  assert.ok(A.includes('TASK_CURRENT.md の冒頭の欄が実装中以降を示す案件は、従来どおり TASK_CURRENT.md を軸にし、CHAT_CURRENT.md を現在地の根拠に加えない'));
+  assert.ok(A.includes('実装前の案件で CHAT_CURRENT.md の定型欄が無い・読めない場合は、推測せず TASK_CURRENT.md だけで判定し、注記（日次は「内容」、週次は「要確認」）に「要確認（CHAT_CURRENT 定型欄なし／未更新）」と書く'));
+  // 従来の A（冒頭の欄を最優先）は残っている
+  assert.ok(A.includes('を最優先で現在地とする。欄に日付が無くても採る'));
+  // 規約3-1 の文言と一致している
+  const kiyaku = read('GitHubリポジトリ標準規約.md');
+  assert.ok(kiyaku.includes('要確認（CHAT_CURRENT 定型欄なし／未更新）') && kiyaku.includes('段階：企画検討／正本整備／実装指示済み／実装中／試験・受入／運用中'));
+});
+t('現在地同期改善 項目3：CHAT_CURRENT.md の読み方（GitHub は①②③の読み替え、ローカルだけの案件は（フォルダ）\\tasks\\CHAT_CURRENT.md）', () => {
+  assert.ok(critC.includes('CHAT_CURRENT.md（判定基準 A の実装前の案件だけ）は、GitHub の案件（GitHub と同じ案件を含む）は上の①②③の「TASK_CURRENT.md」を「CHAT_CURRENT.md」に読み替えた順に、ローカルだけの案件は（フォルダ）\\tasks\\CHAT_CURRENT.md を読む'));
+});
+t('現在地同期改善 項目4：日次の前段の禁止文だけを「保存しない。読むのは AI案件.md のみ可」へ変更。通常業務.md は読まない。後段（朝ブリーフ）は不変', () => {
+  assert.ok(daily.includes('「週間タスク」フォルダ（Obsidian Vault）には保存しない。読むのは AI案件.md のみ可（用途：既存の案件キーの照合と、週次時点の現在地・情報源整合との突き合わせ）。通常業務.md は読まない。'));
+  assert.ok(!daily.includes('には保存しない・読まないでください。'));
+  const i = daily.indexOf('\n【後段】続けて朝ブリーフを作る');
+  const front = daily.slice(0, i), back = daily.slice(i);
+  assert.strictEqual(front.split('\n').filter(l => l.includes('Obsidian Vault')).length, 1);   // 前段で変えたのはこの1行だけ
+  assert.ok(back.endsWith('\n\n' + morning));                                                    // 後段は付録Cと一字も違わない
+  assert.ok(morning.includes('「週間タスク」フォルダ（Obsidian Vault）の「通常業務.md」「AI案件.md」は読まないでください。「週間タスク」フォルダには保存しないでください。'));
+  assert.ok(back.includes('上の巡回の決まり（案件の見つけ方・判定基準・書式）は、後段では使わない'));
+  // 朝ブリーフの材料は従来どおり（AI案件.md の内容を朝ブリーフの本文に使わない）
+  assert.ok(back.includes('- Google Drive「週間タスクボード」フォルダ直下の「朝情報.md」') && back.includes('- Google Drive「週間タスクボード」フォルダ直下の「AI案件_日次現在地.md」'));
+  // 週次は元から AI案件.md を保存する側。週次の保存先は変えていない
+  assert.ok(weekly.includes('「週間タスク」フォルダ直下の「AI案件.md」へ保存してください'));
+});
+t('現在地同期改善：週間分析（付録B）は参照整合だけ。食い違い検出・CHAT_CURRENT 定型欄なしの注記だけの案件を例外情報にしない。JSON項目は不変', () => {
+  assert.ok(analysisP.includes('要確認欄が「チャット未確認」「古い資料・台帳内の古い記載」「食い違い検出：…」「要確認（CHAT_CURRENT 定型欄なし／未更新）」の注記だけの案件は、例外情報にしない'));
+  ['"対象週": "（今週の月曜 yyyy-MM-dd）"', '"見立て"', '"コーション"', '"タスク案"', '"タスク名"', '"種別"', '"曜日"', '"優先度"', '"重点"', '"例外情報"', '"AI案件現在地"', '"案件キー"'].forEach(x => assert.ok(analysisP.includes(x), x));
+});
+// 机上判定例（指示文の決まりを、サンプル台帳に当てはめる。Work の動き自体は実際の巡回結果で確かめる）
+function judge(sources, opts) {
+  opts = opts || {};
+  const stage = sources.filter(x => x.kind === 'TASK' && x.stage)[0];
+  let use = sources;
+  if (stage && /実装中|試験|運用/.test(stage.stage)) use = sources.filter(x => x.kind !== 'CHAT');                // 実装中以降は TASK_CURRENT だけ
+  if (use.length === 1) return { result: '確認済み', position: use[0].position, note: opts.noChatField && stage && !/実装中|試験|運用/.test(stage.stage) ? '要確認（CHAT_CURRENT 定型欄なし／未更新）' : '' };
+  if (use.some(x => !x.at)) return { result: '不一致', position: '' };                                              // 日時が取れない
+  const newest = use.slice().sort((a, b) => (a.at < b.at ? 1 : -1));
+  if (newest[0].at === newest[1].at && newest[0].position !== newest[1].position) return { result: '不一致', position: '' };   // 同時刻で中身が違う
+  const adopted = newest[0];
+  if (opts.prev && opts.prev.stageNo > adopted.stageNo && !adopted.explicitRewind) return { result: '要確認', position: opts.prev.position, note: '前回より前の工程の記載あり' };   // 判定基準B
+  const diff = use.filter(x => x !== adopted && x.position !== adopted.position);
+  return { result: '確認済み', position: adopted.position, note: diff.length ? '食い違い検出：' + diff.map(x => x.kind + '=' + x.position).join('、') : '' };
+}
+t('机上判定（受入）：新販売事例＝台帳(TASK_CURRENT 10-14)とCHAT_CURRENT定型欄(10-16)の食い違い → 確認済み・現在地＝CHAT_CURRENT の内容。食い違いは注記', () => {
+  const r = judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '未着手', position: '指示未発行' }, { kind: 'CHAT', at: '2026-10-16 10:00:00', position: '実装指示済み（IS-00）' }]);
+  assert.deepStrictEqual([r.result, r.position], ['確認済み', '実装指示済み（IS-00）']);
+  assert.ok(r.note.startsWith('食い違い検出：'));
+});
+t('机上判定：日時が取れない／同時刻で中身が違う → 従来どおり不一致で現在地を空にする', () => {
+  assert.deepStrictEqual(Object.assign({}, judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '未着手', position: 'A' }, { kind: 'CHAT', at: '', position: 'B' }])), { result: '不一致', position: '' });
+  assert.deepStrictEqual(Object.assign({}, judge([{ kind: 'TASK', at: '2026-10-16 10:00:00', stage: '未着手', position: 'A' }, { kind: 'CHAT', at: '2026-10-16 10:00:00', position: 'B' }])), { result: '不一致', position: '' });
+});
+t('机上判定：巻き戻し安全装置（日時が新しくても、明記されない前の工程は採らず前回の現在地＋要確認）', () => {
+  const r = judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '未着手', position: 'IS-03', stageNo: 3 }, { kind: 'CHAT', at: '2026-10-16 10:00:00', position: 'IS-01', stageNo: 1 }], { prev: { stageNo: 3, position: 'IS-03' } });
+  assert.deepStrictEqual([r.result, r.position], ['要確認', 'IS-03']);
+  const ok = judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '未着手', position: 'IS-03', stageNo: 3 }, { kind: 'CHAT', at: '2026-10-16 10:00:00', position: 'IS-01', stageNo: 1, explicitRewind: true }], { prev: { stageNo: 3, position: 'IS-03' } });
+  assert.strictEqual(ok.position, 'IS-01');
+});
+t('机上判定：実装中以降の案件は CHAT_CURRENT を根拠にしない。実装前で定型欄が無ければ注記して TASK_CURRENT だけで判定', () => {
+  const impl = judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '実装中', position: 'IS-02 実装中' }, { kind: 'CHAT', at: '2026-10-20 10:00:00', position: '別の内容' }]);
+  assert.strictEqual(impl.position, 'IS-02 実装中');
+  const none = judge([{ kind: 'TASK', at: '2026-10-14 09:00:00', stage: '未着手', position: '指示未発行' }], { noChatField: true });
+  assert.deepStrictEqual([none.result, none.position, none.note], ['確認済み', '指示未発行', '要確認（CHAT_CURRENT 定型欄なし／未更新）']);
+});
+
+// ---- 2026-10-26 追加実装「週間入口拡充」（項目1）：通常業務の巡回を週間分析へ1本化（通常業務.md を週次経路から廃止） ----
+t('週間入口拡充 項目1：付録Bは Gmail・Googleカレンダー・Drive を直接読み、ストックの未採用を材料に加える。通常業務.md の読み取りは指示文から削除', () => {
+  ['- Gmail：今週対応が必要そうな依頼・期限・要確認事項（直接読む）', '- Googleカレンダー：今週の予定のうち、準備・対応のタスクが要るもの（直接読む）', '- Google Drive：今週関係する資料（直接読む）'].forEach(x => assert.ok(analysisP.includes(x), x));
+  assert.ok(analysisP.includes('「ストック」シート（状態が「未採用」の行。内容・書いた日・出どころ・希望週。読むだけで変更しない）'));
+  assert.ok(!analysisP.includes('通常業務.md'));
+  assert.ok(analysisP.includes('Google Drive「週間タスクボード」フォルダ内「週間タスク」フォルダ直下の「AI案件.md」'));   // AI案件の材料は従来どおり
+  assert.ok(analysisP.includes('Gmail・Googleカレンダー・Google Drive・ストックから抽出した事項は 通常タスク'));
+  assert.ok(analysisP.includes('「週間タスク」フォルダ（Obsidian Vault）には保存しないでください'));
+});
+t('週間入口拡充 項目1：抽出したものは従来どおり「タスク案」（通常タスク）。JSON項目・保存先・AI案件の2段構成（5:45巡回→7:00分析）は変えない', () => {
+  assert.ok(analysisP.includes('{"タスク名": "...", "種別": "通常タスク", "曜日": "木", "優先度": 1, "重点": true, "例外情報": ""}'));
+  assert.ok(analysisP.includes('"AI案件現在地": "現在工程・工程状態・次にやる具体作業・現在の手番の要約", "案件キー": "AI案件.md に記載された TASK_CURRENT.md の場所"}'));
+  assert.ok(analysisP.includes('今週の週間分析をして、Google Drive「週間タスクボード」フォルダ直下の「週間分析.json」へ保存してください。'));
+  const head = read('docs/prompts/project_weekly_analysis.md').split('```')[0];
+  assert.ok(head.includes('デスクトップ版Work（AI案件.md）の保存が終わったあと'));
+  assert.ok(head.includes('通常業務.md は読まない。ファイル自体は削除しない'));
+  assert.ok(!head.includes('Web版Work（通常業務.md）'));
+});
+t('週間入口拡充 項目1：ほかの指示文（日次・週次巡回・朝ブリーフ・朝情報）は通常業務の巡回の変更に影響されない。付録Aの本文は変えない', () => {
+  assert.ok(!weekly.includes('Gmail') && !daily.includes('ストック') && !morning.includes('ストック'));
+  const a = block(read('docs/prompts/web_work_weekly.md'));
+  assert.ok(a.includes('通常業務'));
+  assert.ok(!read('docs/prompts/web_work_weekly.md').includes('運用は終了'));      // 付録Aの注記はマニュアル側に置く（指示文ファイルは触らない）
+  const m = read('src/view_manual.html');
+  assert.ok(m.includes('<p class="note">この指示文の運用は終了（週間入口拡充により週間分析へ1本化）。</p>'));
+  assert.ok(m.indexOf('この指示文の運用は終了') > m.indexOf('付録A') && m.indexOf('この指示文の運用は終了') < m.indexOf('id="appendix-a"'));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

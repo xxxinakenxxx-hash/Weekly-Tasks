@@ -3,7 +3,7 @@
   (function () {
     var STATUS = APP_CTX.statusValues, KINDS = APP_CTX.kindValues, DAYS = APP_CTX.dayValues;
     var EXCEPTIONS = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
-    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey'];
+    var EDIT_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey', 'weekPlan'];
     var RECORD_FIELDS = [['result', '実施結果'], ['memo', 'メモ'], ['handover', '次回申し送り']];
     // 採用前に個別の確認が必要な例外区分（IS-05：自動確定しない）
     var CONFIRM_REQUIRED = ['不一致', 'チャット未確認'];
@@ -144,7 +144,7 @@
           key: 'c' + (++state.seq), title: String(t['タスク名']), kind: t['種別'], day: parseDays(t['曜日']) || '',
           priority: t['優先度'] === undefined ? '' : t['優先度'], focus: t['重点'] === true,
           status: '未着手', exception: t['例外情報'] || '', aiPosition: t['AI案件現在地'] || '',
-          caseKey: String(t['案件キー'] || '').trim(), instructFrom: '', implementTo: ''
+          caseKey: String(t['案件キー'] || '').trim(), instructFrom: '', implementTo: '', weekPlan: ''
         };
       });
       $('wk-import').open = false;
@@ -296,6 +296,41 @@
       return p;
     }
 
+    // 今週やることの短い表示（改行を空白にし、長いときは先頭だけ。全文はマウスを載せるか「詳細・編集」で見る）
+    function shortPlan(text) {
+      var s = String(text || '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+      return s.length > 60 ? s.slice(0, 60) + '…' : s;
+    }
+
+    // ---- 案件キーのリポジトリ指定入力（追加改修 現在地同期改善 項目2） ----
+    // リポジトリのアドレス（末尾の .git や /tree/… は許容）またはローカルフォルダの場所を、所定のキー形に整える。
+    // 整えられない値は ok:false と理由を返す（入れない）。すでに TASK_CURRENT.md で終わる値は変えない。空欄は空欄（キーなし）
+    var CASEKEY_OWNER = 'xxxinakenxxx-hash';
+    function normalizeCaseKeyInput(raw) {
+      var v = String(raw === undefined || raw === null ? '' : raw).trim();
+      if (!v) return { ok: true, value: '' };
+      if (/^["'].*["']$/.test(v)) v = v.slice(1, -1).trim();
+      if (/TASK_CURRENT\.md$/i.test(v)) return { ok: true, value: v };
+      var hint = 'リポジトリのアドレス（例 https://github.com/' + CASEKEY_OWNER + '/リポジトリ名）か、フォルダの場所（例 C:\\Users\\inamori240\\Documents\\フォルダ名）を貼ってください。';
+      var gh = v.match(/^(?:https?:\/\/(?:www\.)?github\.com\/|git@github\.com:)([^\/\s?#]+)([\/?#].*)?$/i);
+      if (gh) {
+        // 所有者の後ろの最初の区切り（/ ? #）までがリポジトリ名。/tree/… や ?tab=… は捨てる
+        var owner = gh[1], rest = gh[2] || '';
+        var repo = (rest.charAt(0) === '/' ? rest.slice(1).split(/[\/?#]/)[0] : '').replace(/\.git$/i, '');
+        if (!repo) return { ok: false, reason: 'GitHub のアドレスにリポジトリ名がありません。' + hint };
+        if (owner.toLowerCase() !== CASEKEY_OWNER) return { ok: false, reason: '所有者が ' + CASEKEY_OWNER + ' ではないため、所定のキーの形にできません（' + owner + '）。' };
+        if (!/^[A-Za-z0-9._-]+$/.test(repo) || /^\.+$/.test(repo)) return { ok: false, reason: 'リポジトリ名が正しくありません（' + repo + '）。' };
+        return { ok: true, value: 'https://github.com/' + CASEKEY_OWNER + '/' + repo + '/blob/HEAD/tasks/TASK_CURRENT.md' };
+      }
+      if (/^[A-Za-z]:[\\\/]/.test(v)) {
+        var path = v.replace(/\//g, '\\').replace(/\\+$/, '');
+        if (/\\tasks$/i.test(path)) return { ok: true, value: path + '\\TASK_CURRENT.md' };
+        if (/^[A-Za-z]:$/.test(path)) return { ok: false, reason: 'フォルダの場所がドライブだけです。' + hint };
+        return { ok: true, value: path + '\\tasks\\TASK_CURRENT.md' };
+      }
+      return { ok: false, reason: '所定のキーの形にできません（' + v + '）。' + hint };
+    }
+
     // 指示ルート（追加改修④）：「指示元 → 実装先」。片方だけ空欄ならその側を「未設定」と表示する
     function routeText(t) {
       var from = String(t.instructFrom || '').trim(), to = String(t.implementTo || '').trim();
@@ -370,6 +405,14 @@
       c.appendChild(top);
 
       c.appendChild(el('p', 'wk-card-title', t.title));
+      // 今週やること（追加実装 週間入口拡充）：入力がある場合だけ短く表示する（空なら何も出さない）
+      if (String(t.weekPlan || '').trim()) {
+        var wp = el('p', 'wk-card-weekplan');
+        wp.appendChild(el('span', 'wk-weekplan-label', '今週やること：'));
+        wp.appendChild(document.createTextNode(shortPlan(t.weekPlan)));
+        wp.title = String(t.weekPlan);
+        c.appendChild(wp);
+      }
       // 現在地（追加改修③）：確認済みか日次で未確認かを添え、確認済みより新しい未確認の取得は別の行に出す
       if (t.kind === 'AI案件') {
         var ai = App.aiState(t);
@@ -472,6 +515,15 @@
       row.appendChild(focusLabel);
       d.appendChild(row);
 
+      // 今週やること（追加実装 週間入口拡充）：週間計画時にユーザーが決める今週の作業内容。候補（未保存）でも入力でき、採用・確定で一緒に保存される
+      var wl = el('label', 'wk-record-field wk-weekplan');
+      wl.appendChild(el('span', '', '今週やること（今週の作業内容を自由に書く。AIは書きません）'));
+      var wta = el('textarea', 'wk-weekplan-input');
+      wta.rows = 2; wta.value = t.weekPlan || ''; wta.setAttribute('aria-label', '今週やること');
+      wta.addEventListener('change', function () { setField(t, 'weekPlan', wta.value); });
+      wl.appendChild(wta);
+      d.appendChild(wl);
+
       // 指示ルートの編集（AI案件のみ。追加改修④）
       if (t.kind === 'AI案件') {
         var rt = el('div', 'wk-route-edit');
@@ -483,13 +535,14 @@
         d.appendChild(rt);
         // 案件キー：指示ルートを翌週以降へ引き継ぐための識別（AI案件.md の TASK_CURRENT.md の場所）
         var kl = el('label', 'wk-record-field wk-casekey');
-        kl.appendChild(el('span', '', '案件キー（AI案件.md に記載された TASK_CURRENT.md の場所。翌週以降の指示ルートの引継ぎに使う。空欄なら引き継がない）'));
+        kl.appendChild(el('span', '', '案件キー（リポジトリの場所。日次AI現在地の自動同期と、翌週以降の指示ルート引継ぎに使う。リポジトリのアドレスを貼れば形を整えます。空欄なら同期・引継ぎをしない）'));
         var ki = el('input', 'wk-casekey-input');
         ki.type = 'text'; ki.value = t.caseKey || ''; ki.setAttribute('aria-label', '案件キー');
         ki.addEventListener('change', function () {
-          var v = ki.value.trim();
-          if (v && !/TASK_CURRENT\.md$/i.test(v)) { App.showError('案件キーは AI案件.md に記載された TASK_CURRENT.md の場所（…\\TASK_CURRENT.md）です。'); ki.value = t.caseKey || ''; return; }
-          setField(t, 'caseKey', v);
+          var r = normalizeCaseKeyInput(ki.value);
+          if (!r.ok) { App.showError('案件キーを入れられません：' + r.reason); ki.value = t.caseKey || ''; return; }
+          ki.value = r.value;
+          setField(t, 'caseKey', r.value);
         });
         kl.appendChild(ki);
         d.appendChild(kl);
@@ -753,7 +806,7 @@
     }
     function commit() {
       var creates = state.candidates.map(function (c) {
-        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', instructFrom: c.instructFrom || '', implementTo: c.implementTo || '', caseKey: c.caseKey || '', exceptionConfirmed: c.exceptionConfirmed === true };
+        return { title: c.title, kind: c.kind, day: c.day, priority: c.priority, focus: c.focus, status: c.status, exception: c.exception, aiPosition: c.aiPosition, handover: c.handover || '', sourceTaskId: c.sourceTaskId || '', instructFrom: c.instructFrom || '', implementTo: c.implementTo || '', caseKey: c.caseKey || '', weekPlan: c.weekPlan || '', exceptionConfirmed: c.exceptionConfirmed === true };
       });
       var updates = Object.keys(state.edits).map(function (id) {
         var ch = {};

@@ -202,6 +202,15 @@
   .br-task-foot { display: flex; align-items: center; gap: 8px; }
   #br-tasks-other-wrap summary { cursor: pointer; margin: 8px 0; }
   .wk-saved { color: #2d6a2d; }
+  /* 追加実装 週間入口拡充：今週やること（カード表面・朝ブリーフの行）とTODO画面 */
+  .wk-card-weekplan { margin: 4px 0 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .wk-weekplan-label { color: var(--accent); font-weight: bold; }
+  .br-task-weekplan { display: block; font-weight: normal; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .td-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .td-content { margin: 0 0 2px; font-weight: bold; overflow-wrap: anywhere; }
+  .td-meta { margin: 0 0 4px; font-size: 12px; }
+  .td-adopted .td-content, .td-withdrawn .td-content { color: var(--muted); font-weight: normal; }
+  .td-week { max-width: 220px; font-size: 14px; padding: 4px; }
   @media (max-width: 600px) {
     .app-header { padding: 10px 12px; }
     .tabs { width: 100%; }
