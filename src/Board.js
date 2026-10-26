@@ -5,12 +5,12 @@
 
 // 週間画面・朝ブリーフ画面で変更できる項目（IS-04で実施結果・メモ・次回申し送り、IS-05で例外情報を追加）
 // 追加改修④：指示ルート（指示元・実装先）を追加
-var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey'];
+var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'handover', 'exception', 'instructFrom', 'implementTo', 'caseKey', 'weekPlan'];
 // 採用時に個別の確認が必要な例外区分（IS-05：情報源の不一致等を自動確定しない）
 var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 // 追加改修④：指示ルートも翌週へ引き継ぐ
-var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey'];
+var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey', 'weekPlan'];
 // 追加改修③：持越し・次週候補の取り込みでは、現在地の確認日時と最新取得も写す（現在地の根拠を失わない）
 var CARRY_AI_STATE_KEYS = ['aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition'];
 // 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
@@ -173,10 +173,12 @@ function commitWeekBoard(targetWeek, payload) {
     updates.forEach(function (u) {
       updateTask_(u.taskId, u.changes);
     });
+    // 追加実装 週間入口拡充：採用して確定した候補のうち、ストックの「未採用」と内容が同じものを「採用済み」にする（確定して保存の処理内）
+    var stockAdopted = creates.length ? markStockAdopted_(creates.map(function (c) { return c.title; })) : 0;
     if (analysis) {
       appendObj_(analysisSheet_(), SHEETS.ANALYSIS, { targetWeek: targetWeek, savedAt: nowText_(), outlook: analysis.outlook, cautions: analysis.cautions.join('\n') });
     }
-    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), analysis: getWeekAnalysis_(targetWeek), analysisSaved: !!analysis, created: creates.length, updated: updates.length, refreshed: refreshes.length, routeInherited: inherited, loadedAt: nowText_() };
+    return { targetWeek: targetWeek, tasks: getTasks(targetWeek), analysis: getWeekAnalysis_(targetWeek), analysisSaved: !!analysis, created: creates.length, updated: updates.length, refreshed: refreshes.length, routeInherited: inherited, stockAdopted: stockAdopted, loadedAt: nowText_() };
   });
 }
 

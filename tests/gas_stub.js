@@ -85,9 +85,20 @@ function load(opts = {}) {
     },
     HtmlService: {}
   };
+  // 追加実装 週間入口拡充：Google Tasks連携（高度なGoogleサービス「Tasks」）。opts.todo を渡したときだけ有効（渡さなければ未定義＝連携が無効な状態）
+  // opts.todo = { lists: [{ id, title, tasks: [{ id, title, status, deleted }] }], error?: '...' }。呼び出しの記録は __todoCalls
+  const todoCalls = [];
+  if (opts.todo) {
+    const td = opts.todo;
+    ctx.Tasks = {
+      Tasklists: { list: o => { todoCalls.push(['Tasklists.list', o]); if (td.error) throw new Error(td.error); return { items: td.lists.map(l => ({ id: l.id, title: l.title })) }; } },
+      Tasks: { list: (id, o) => { todoCalls.push(['Tasks.list', id, o]); if (td.error) throw new Error(td.error); const l = td.lists.filter(x => x.id === id)[0]; return { items: (l ? l.tasks : []).map(t => Object.assign({}, t)) }; } }
+    };
+  }
+  ctx.__todoCalls = todoCalls;
   vm.createContext(ctx);
   const src = path.join(__dirname, '..', 'src');
-  ['Config.js', 'Schema.js', 'Store.js', 'Board.js', 'Brief.js', 'Import.js', 'Code.js', 'Is00Test.js', 'Migration.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
+  ['Config.js', 'Schema.js', 'Store.js', 'Board.js', 'Brief.js', 'Import.js', 'Stock.js', 'Code.js', 'Is00Test.js', 'Migration.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }));
   ctx.__sheets = sheets;
   ctx.__drive = drive;
   ctx.__props = props;

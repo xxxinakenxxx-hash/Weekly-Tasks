@@ -20,6 +20,10 @@ var DAY_COMBOS = (function () {
 var AI_RESULT_VALUES = ['確認済み', '要確認', '不一致', '取得失敗', 'チャット未確認'];
 var EXCEPTION_TYPES = ['要確認', '不一致', 'チャット未確認', '取得失敗'];
 var HISTORY_OPS = ['作成', '修正', '状態変更', '削除'];
+// ストック（追加実装 週間入口拡充）の状態と出どころ
+var STOCK_STATUS_VALUES = ['未採用', '採用済み', '取り下げ'];
+var STOCK_SOURCE_CALENDAR = 'カレンダー';
+var STOCK_SOURCE_MANUAL = '手入力';
 
 var SHEETS = {
   TASKS: {
@@ -51,7 +55,9 @@ var SHEETS = {
       // 日次AI現在地巡回の最新の取得事実（確認済み以外も記録する。「AI案件現在地」は確認済みのときだけ更新）
       { key: 'aiLatestAt', header: '最新取得日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm' },
       { key: 'aiLatestResult', header: '最新取得結果' },
-      { key: 'aiLatestPosition', header: '最新取得現在地' }
+      { key: 'aiLatestPosition', header: '最新取得現在地' },
+      // 追加実装 週間入口拡充：ユーザーが週間計画時に決める今週の作業内容（自由記入。AIは生成しない。空欄＝未記入）
+      { key: 'weekPlan', header: '今週やること' }
     ]
   },
   HISTORY: {
@@ -87,6 +93,20 @@ var SHEETS = {
       { key: 'savedAt', header: '保存日時', text: true, dateFormat: 'yyyy-MM-dd HH:mm:ss' },
       { key: 'outlook', header: '見立て' },
       { key: 'cautions', header: 'コーション' }
+    ]
+  },
+  // 追加実装 週間入口拡充：TODOタブのストック（カレンダーToDoと手入力）。週間分析が「未採用」を読む。
+  // 「週間分析」シートと同様、TODOタブを初めて使うときに作る（setupSheets では作らない。既存シートの列は変えない）
+  STOCK: {
+    name: 'ストック',
+    columns: [
+      { key: 'content', header: '内容' },
+      { key: 'writtenOn', header: '書いた日', text: true, dateFormat: 'yyyy-MM-dd' },
+      // 出どころ：カレンダー／手入力。ToDo側で完了・削除された項目は「カレンダー（ToDo側で完了）」のように注記する（入力規則は付けない）
+      { key: 'source', header: '出どころ' },
+      { key: 'hopeWeek', header: '希望週', text: true, dateFormat: 'yyyy-MM-dd' },
+      { key: 'status', header: '状態', values: STOCK_STATUS_VALUES },
+      { key: 'todoId', header: 'ToDo側ID', text: true }
     ]
   }
 };

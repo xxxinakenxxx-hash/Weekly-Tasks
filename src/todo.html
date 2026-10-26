@@ -1,0 +1,100 @@
+<script>
+  // TODO画面（追加実装 週間入口拡充）：ストックの一覧・手入力の追加・状態変更（取り下げ／未採用に戻す）。ToDoの取込はサーバー側
+  (function () {
+    var state = { items: [], loadedAt: '' };
+
+    function $(id) { return document.getElementById(id); }
+    function mk(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+
+    function itemRow(it) {
+      var li = mk('div', 'td-item td-' + (it.status === '未採用' ? 'open' : it.status === '採用済み' ? 'adopted' : 'withdrawn'));
+      li.setAttribute('data-row', it.row);
+      li.appendChild(mk('p', 'td-content', it.content));
+      var meta = mk('p', 'td-meta wk-muted');
+      meta.textContent = it.source + '　書いた日 ' + it.writtenOn + (it.hopeWeek ? '　希望週 ' + it.hopeWeek : '') + (it.status !== '未採用' ? '　［' + it.status + '］' : '');
+      li.appendChild(meta);
+      if (it.status === '未採用' || it.status === '取り下げ') {
+        var btn = mk('button', 'btn btn-small', it.status === '未採用' ? '取り下げ' : '未採用に戻す');
+        btn.type = 'button';
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          App.callServer('setStockStatus', [it.row, it.content, it.status === '未採用' ? '取り下げ' : '未採用'], function (res) {
+            state.items = res.items; state.loadedAt = res.loadedAt; render();
+          }, function () { btn.disabled = false; });
+        });
+        li.appendChild(btn);
+      }
+      return li;
+    }
+
+    function render() {
+      // 新しく書いたものを上に出す
+      var items = state.items.slice().sort(function (a, b) { return b.row - a.row; });
+      var open = items.filter(function (i) { return i.status === '未採用'; });
+      var done = items.filter(function (i) { return i.status !== '未採用'; });
+      $('td-list-title').textContent = '未採用のTODO（' + open.length + '件）';
+      $('td-empty').hidden = open.length > 0;
+      var list = $('td-list'); list.innerHTML = '';
+      open.forEach(function (i) { list.appendChild(itemRow(i)); });
+      $('td-done-title').textContent = '採用済み・取り下げ（' + done.length + '件）';
+      var dl = $('td-done'); dl.innerHTML = '';
+      done.forEach(function (i) { dl.appendChild(itemRow(i)); });
+      $('td-loaded-at').textContent = state.loadedAt ? state.loadedAt + ' 時点' : '';
+    }
+
+    // ToDoの取込の結果（失敗したときだけ目立たせる。ストックの一覧は取込に失敗しても表示する）
+    function showSync(todo) {
+      var p = $('td-sync');
+      if (!todo) { p.hidden = true; return; }
+      if (todo.result === '取込失敗') {
+        p.className = 'wk-stale';
+        p.textContent = 'カレンダーのToDoを取り込めませんでした（' + todo.checkedAt + ' 確認）：' + todo.reason + '。手入力の追加と、すでに取り込んだ項目の表示は使えます。';
+      } else {
+        p.className = 'wk-note wk-excluded';
+        p.textContent = 'カレンダーのToDoの取込：' + todo.checkedAt + ' 確認' + (todo.added ? '、新しく ' + todo.added + '件を追加しました' : '、新しい項目はありません') + (todo.noted ? '（ToDo側で完了・削除された ' + todo.noted + '件を出どころに注記しました）' : '') + '。';
+      }
+      p.hidden = false;
+    }
+
+    function load() {
+      $('td-loading').hidden = false;
+      $('td-stale').hidden = true;
+      App.callServer('getStockPage', [], function (res) {
+        $('td-loading').hidden = true;
+        state.items = res.items; state.loadedAt = res.loadedAt;
+        showSync(res.todo);
+        render();
+      }, function () {
+        $('td-loading').hidden = true;
+        var st = $('td-stale');
+        st.hidden = false;
+        st.textContent = 'ストックを読み込めませんでした。「再読込」を押して取り直してください。' + (state.loadedAt ? '表示中は ' + state.loadedAt + ' 時点の前回値です。' : '');
+      });
+    }
+
+    function add() {
+      var content = $('td-input').value.trim();
+      if (!content) { App.showError('内容を入力してください。'); return; }
+      var btn = $('td-add'); btn.disabled = true;
+      App.callServer('addStockItem', [{ content: content, hopeWeek: $('td-week').value }], function (res) {
+        btn.disabled = false;
+        state.items = res.items; state.loadedAt = res.loadedAt;
+        $('td-input').value = ''; $('td-week').value = '';
+        var m = $('td-msg'); m.textContent = '「' + content + '」をストックに追加しました。'; m.hidden = false;
+        render();
+      }, function () { btn.disabled = false; });
+    }
+
+    $('td-add').addEventListener('click', add);
+    $('td-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') add(); });
+    $('td-reload').addEventListener('click', load);
+    // TODOタブを開くたびに読み込む（ToDoの取込もこのとき行われる）
+    document.addEventListener('viewshown', function (e) { if (e.detail === 'todo') load(); });
+    if (APP_CTX.initialView === 'todo') load();
+  })();
+</script>

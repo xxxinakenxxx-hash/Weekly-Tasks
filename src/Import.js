@@ -28,7 +28,10 @@ function importBriefFromDrive() {
 
 /** 時間トリガー：週間分析.json を確かめる（内容は保存しない。週間画面で「案」として表示する） */
 function importAnalysisFromDrive() {
-  return checkAnalysis_().status;
+  var status = checkAnalysis_().status;
+  // 追加実装 週間入口拡充：既存の1時間おき取込の中で、カレンダーのToDoをストックへ合流する（新しいトリガーは作らない。失敗しても上の結果は変えない）
+  syncTodoToStock_();
+  return status;
 }
 
 /** 時間トリガー2本を設置する（同じ関数の既存トリガーは消してから作る）。実行はユーザーの実機承認後だけ（§8） */

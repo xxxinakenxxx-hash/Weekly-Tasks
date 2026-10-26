@@ -81,7 +81,7 @@ t('移行：既存15列の「タスク」に16列目以降の見出しだけを�
   sh.data = [h15.slice(), row.slice()];
   const before = JSON.stringify(sh.data[1]);
   const x = g.getTasks(W)[0];
-  assert.deepStrictEqual(sh.data[0].slice(15), ['指示元', '実装先', '案件キー', '現在地確認日時', '最新取得日時', '最新取得結果', '最新取得現在地']);
+  assert.deepStrictEqual(sh.data[0].slice(15), ['指示元', '実装先', '案件キー', '現在地確認日時', '最新取得日時', '最新取得結果', '最新取得現在地', '今週やること']);
   assert.strictEqual(JSON.stringify(sh.data[1].slice(0, 15)), before);
   assert.deepStrictEqual([x.instructFrom, x.implementTo, x.status, x.aiPosition], ['', '', '進行中', 'P1']);
   assert.strictEqual(g.getHistory().length, 0);

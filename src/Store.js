@@ -48,7 +48,7 @@ function writeHeader_(sheet, def) {
 }
 
 // 既存の「タスク」シートに、後から追加した列の見出しを末尾に足す（既存の列・行は変更しない）
-// IS-04：13列→「持越し元タスクID」（14列目）、IS-06：14列→「削除済み」（15列目）、追加改修④：15列→「指示元」「実装先」「案件キー」（16〜18列目）、追加改修③：「現在地確認日時」「最新取得日時」「最新取得結果」「最新取得現在地」（19〜22列目）
+// IS-04：13列→「持越し元タスクID」（14列目）、IS-06：14列→「削除済み」（15列目）、追加改修④：15列→「指示元」「実装先」「案件キー」（16〜18列目）、追加改修③：「現在地確認日時」「最新取得日時」「最新取得結果」「最新取得現在地」（19〜22列目）、追加実装 週間入口拡充：「今週やること」（23列目）
 function upgradeTasksHeader_(sheet) {
   var def = SHEETS.TASKS;
   var headers = headersOf_(def);
@@ -320,7 +320,7 @@ function normalizeTask_(t) {
   var out = Object.assign({}, t);
   out.focus = out.focus === true || out.focus === 'TRUE';
   if (out.priority === undefined || out.priority === null) out.priority = '';
-  ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition', 'sourceTaskId', 'aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition'].forEach(function (k) {
+  ['day', 'result', 'memo', 'handover', 'exception', 'aiPosition', 'sourceTaskId', 'aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition', 'weekPlan'].forEach(function (k) {
     if (out[k] === undefined || out[k] === null) out[k] = '';
   });
   // 指示ルート（追加改修④）：前後の空白だけを除く。空欄＝未設定（推測で補わない）

@@ -5,10 +5,12 @@
 
 var APP_TITLE = '週間タスク・朝ブリーフ';
 
-// 画面定義（週間タスク／朝ブリーフの2画面）
+// 画面定義（週間タスク／朝ブリーフ／TODOの3画面）
 var VIEWS = {
   weekly: { file: 'view_weekly', label: '週間タスク' },
-  brief: { file: 'view_brief', label: '朝ブリーフ' }
+  brief: { file: 'view_brief', label: '朝ブリーフ' },
+  // 追加実装 週間入口拡充：カレンダーのToDoと手入力のストック
+  todo: { file: 'view_todo', label: 'TODO' }
 };
 var DEFAULT_VIEW = 'weekly';
 
