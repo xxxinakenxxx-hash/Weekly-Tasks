@@ -1,5 +1,21 @@
 # TASK_CURRENT
 
+## 2026-10-26 追加改修「現在地同期改善」＋追加実装「週間入口拡充」実装・GAS /dev 反映
+- 状態：GitHub実装済み・自動テスト合格（21ファイル全件）・GAS /dev 反映済み・GAS側ソース照合済み。予約3本の本文差し替え・Google Tasks連携の有効化（権限の再承認）・/dev 実画面確認は未実施（ユーザー実機作業待ち）。公開版1は不変。IS-06は継続中のまま
+- 根拠：docs/implementation/追加改修指示書_現在地同期改善.md（項目1〜4）、追加実装指示書_週間入口拡充.md（項目1〜3）。2本を1工程で実装。静的確認はユーザー承認済み（2026-10-26。予約手順書は3本、mainを d2c77f8 から新設、マニュアルはTODO説明追加・付録A注記、Tasksは enabledAdvancedServices のみ）
+- 実装コミット：6627639（claude/gallant-dijkstra-m5gen1）。作業開始時は d2c77f8（main も同コミットから新設）
+- 実装：
+  - 指示文（docs/prompts）：desktop_work_ai.md（週次）と desktop_work_ai_daily.md（日次）の判定基準A・C・Dを改訂（日時が新しい記載を正／実装前の案件は CHAT_CURRENT 冒頭定型欄／巻き戻し安全装置は不変）。日次の前段の禁止文を「保存しない。読むのは AI案件.md のみ可」へ変更（後段は付録Cと一字も違わない）。project_weekly_analysis.md（付録B）：Gmail・カレンダー・Drive直接巡回とストック読取を追加、通常業務.md参照を削除（JSON項目は不変）
+  - 画面・サーバー：weekly.html（案件キーのリポジトリ指定入力、今週やること欄）、brief.html（今週やること表示のみ）、TODOタブ（view_todo.html・todo.html・Stock.js・Code.js の VIEWS・index.html）、Schema.js・Store.js（タスク23列目「今週やること」、シート「ストック」）、Board.js（確定時にストックを採用済みへ）、Import.js（既存の1時間おき取込トリガー内でToDo取込）、appsscript.json（enabledAdvancedServices に Tasks v1 のみ。oauthScopes は追加なし）
+  - 資料：操作マニュアル再生成（TODOタブ・今週やること・案件キー貼付の説明、付録A冒頭に運用終了の注記）、DB_SCHEMA.md、AI_DAILY_FORMAT.md
+  - 実装中に決めた点（指示書に定めなし。ユーザー確認事項）：取り込むToDoは全リストの未完了項目／採用済みの判定はタスク名とストック内容の一字一致／希望週は対象週と同じ場合だけ出す／CHAT_CURRENT は GitHub の案件は GitHub 側・ローカルだけならローカル側を読み、日付が同じなら更新時刻で比べる
+- テスト：全21ファイル合格（新規 weekplan 10件・stock 20件・casekey_input 8件、prompts 51件・manual 11件に追加）。route・delete は列追加に合わせ期待値を更新。画面は Chromium（サーバー模擬）で PC幅1280・スマホ幅390を確認（エラー・横スクロールなし）。Tasks API の実呼び出しは未検査（テストでは差し替え）
+- GAS反映：node tools/push_gas_checked.js で実行（作業ツリーclean・マニュアル再生成で差分なし・manual.test.js 合格・scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS／rootDir src の確認・clasp push --force（23ファイル、新規 Stock.js・todo.html・view_todo.html）・deployment一覧不変の確認まで成功）。実行は Claude Code の作業環境（実PCではない）。clasp 3.4.1 を導入し、clasp login --no-localhost の対話式でログイン（ユーザーが会社アカウントで許可し、リダイレクト先URLを貼り戻した）
+- 反映前後の照合：反映前＝GAS側20ファイルのうち、ローカルとの違いは今回変更した12ファイルと新規3ファイルだけ（GAS側だけの変更なし）。反映後＝GAS側23ファイルすべてがローカル src/ と一致（違い0件）
+- 公開版不変：deployment は反映前後とも @HEAD と @1（IS-00 共通基盤）の2件で変化なし。version は 1 だけ
+- 残件（ユーザー実機）：(a) 予約3本（【週間タスク】日次AI現在地巡回＝付録E／週次AI巡回＝付録D／週間分析JSON生成＝付録B）の本文差し替えと、差し替え後の「一時停止でないこと・実行先チャット」の確認 (b) GASエディタでの Tasks 連携の再承認（権限の追加）と /dev でTODOタブの確認 (c) 差し替え後の初回実行の確認（週次・日次・月曜の週間分析）
+- 未検査：Tasks API の実呼び出し、GAS上での再承認の要否、予約の実行結果
+
 ## 2026-10-23 追加改修（JSON手渡し自動化）初回実機確認（日次）
 - 判定：日次の全経路（予約 → 朝ブリーフ.json 保存 → GAS 自動取込 → 朝ブリーフ画面表示）が成功（ユーザー実機による。コード変更なし）。IS-06は継続中のまま
 - 実機設定（ユーザー実施、docs/WORK_SCHEDULE.md に記録）：予約「【週間タスク】日次AI現在地巡回」を付録Eへ差し替え・平日 6:45・実行先チャット固定。新設予約「【週間タスク】週間分析JSON生成」毎週月曜 7:00・付録B。GAS 時間トリガー2本（importBriefFromDrive／importAnalysisFromDrive、1時間おき）を 2026-10-22 に設置
@@ -187,7 +203,7 @@ IS-06 総合試験・受入
 
 ## 現在地
 IS-06継続中・総合シナリオ⑦（10/9 状態変更、10/12 翌週取り込み）待ち。総合シナリオ①〜⑥完了、UI是正の実画面確認は合格。IS-06以外の工程へは進まない。IS-06受入前の追加実装・追加改修（複数日配置・日次AI現在地・手動タスク追加・保留・指示ルート・案件キー/現在地区別）は /dev 反映済み（下記。一部は実データ確認待ち）
-追加改修2本（現在地同期改善・共通規約マスタ管理）：指示書保存済み（docs/implementation/）・実装未着手。
+追加改修・追加実装（現在地同期改善・週間入口拡充）：2026-10-26 実装・GAS /dev 反映済み（予約3本の差し替え・Tasks連携の有効化は実機待ち。上の2026-10-26の節）。共通規約マスタ管理：指示書保存済み・実装未着手。
 
 ## IS-06 方針（2026-10-05 ユーザー決定）
 - 総合シナリオ①〜⑧を実データで実施する。受入は /dev で行う
