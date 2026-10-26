@@ -1,7 +1,7 @@
 # CHAT_CURRENT
 
 - 段階：試験・受入
-- 現在地：共通規約マスタ管理を実施中（2026-10-26）。standards 新設・初版登録済み、Weekly-Tasks・Aegis-Mesh・New-Sales-Cases に配布済み。Billing-Reconciliation-System と SA-management は本文が standards と違うため判断待ち（未配布）。予約3本の差し替えとTasks連携は完了済み・初回実行の確認待ち。
+- 現在地：共通規約マスタ管理を完了（2026-10-26）。standards を正本とし、5リポジトリの写しを配布・全件一致照合済み。予約3本の差し替えとTasks連携は完了済み・初回実行の確認待ち。次はユーザーの実機確認と、次の指示。
 - 最終更新：2026-10-26
 
 設計・管理側（Claude Chat）の判断・指示・結果・次工程の履歴。仕様正本ではない。
@@ -65,8 +65,10 @@
 - 要確認（実装側が決めた点。ユーザーの判断待ち）：取り込むToDoの範囲（全リストの未完了）／採用済みの判定（タスク名の一字一致）／希望週の扱い／CHAT_CURRENT の読み先と同日の比べ方／マニュアル本文の通常業務手順を「終了」と明記
 - 次工程・未決：予約3本の本文差し替えと一時停止・実行先チャットの確認、Tasks連携の再承認、差し替え後の初回実行の確認。共通規約マスタ管理の実装着手順はユーザーが指示する
 
-## 2026-10-26 共通規約マスタ管理：実施（途中。2件は判断待ち）
+## 2026-10-26 共通規約マスタ管理：実施・完了
 - 参照：追加改修指示書_共通規約マスタ管理.md §3。standards 新設は Claude Code に作成権限が無かったため、ユーザーが Web 画面で作成（Private・README付き）
-- 実施：standards に2文書を初版として登録（コミット e6dd81e39745eb22bdafee84d083804819ae07ed。Weekly-Tasks main af3eb2e の現行版と一字一致）と README（改訂手順）。写しの冒頭2行を追加：Weekly-Tasks（本コミット）・Aegis-Mesh（6d78f58）・New-Sales-Cases（8ed7284）。書き込み前の最新SHA確認済み（Aegis-Mesh 3bff421・New-Sales-Cases e62a143・Billing 0264fbb・SA bea6604・Weekly-Tasks main af3eb2e）
-- 判断待ち（指示書の前提と実際が違う。推測せず停止）：①Billing-Reconciliation-System の2文書のうち標準規約は「更新日」の1行だけが standards と違う（2026-10-22／standards は 2026-10-16）。②SA-management の標準規約は「更新日」（2026-10-23）と、共通節「工程完了とmainへの反映」が案件版の「（AIメモSA管理での適用）」節に置き換わっている点が違う。指示書は「本文は変更しない」かつ「本文一致を照合」と求めており、両立しない
-- 次工程：上の2件の扱いをユーザーが決める。決定後に配布・全5件の一致照合・standards README への配布結果の記録
+- 実施：standards に2文書を初版として登録（コミット e6dd81e39745eb22bdafee84d083804819ae07ed。Weekly-Tasks main af3eb2e の現行版と一字一致）と README（改訂手順）。5リポジトリの写しの冒頭2行を追加し、各 main へ直接コミット（ユーザー承認。保護設定による拒否なし）：Weekly-Tasks 44388ae（PR #3）・Aegis-Mesh 6d78f58・New-Sales-Cases 8ed7284・Billing-Reconciliation-System 81c6242・SA-management 950a748。書き込み前の最新SHA確認済み
+- ユーザー裁定（2026-10-26）：①Billing は標準規約の更新日を standards に揃える（2026-10-22→2026-10-16。更新日の繰り上げはマスタ側の次回改訂で行う）。②SA-management は(a)：共通節「工程完了とmainへの反映」を standards と同じ内容で復元し、案件版の節は本文を一字も変えず「案件固有適用」の節として残す（冒頭に「この節は共通節を上書きする」）。更新日も揃える
+- 一致照合：各 main から再取得し、冒頭2行を除いた本文を standards と照合。5リポジトリ×2文書＝10文書すべて一致（SA-management の標準規約は固有節を除いて一致。固有節の存在を別途確認し README に記録）。standards README に配布結果を記録（standards 最新 f0edd72。2文書を最後に変更したコミットは e6dd81e39745eb22bdafee84d083804819ae07ed のまま）
+- 注意（記録）：SA-management の AGENTS.md は「mainへの直接変更」を禁止しているが、今回はユーザーの明示承認により main へ直接コミットした。写しの元SHAは「2文書を最後に変更した standards のコミット」と定義した（README に記載）
+- 次工程・未決：なし（本改修は完了）。改訂が生じたら README の手順（standards 改訂→配布指示→更新・一致確認→照合）で行う
