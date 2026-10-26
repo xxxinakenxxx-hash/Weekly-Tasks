@@ -1,7 +1,7 @@
 # CHAT_CURRENT
 
 - 段階：試験・受入
-- 現在地：現在地同期改善と週間入口拡充を1工程で実装し、GAS /dev へ反映済み（2026-10-26、コミット 6627639）。次はユーザーの実機作業（予約3本の本文差し替え、Tasks連携の再承認）。共通規約マスタ管理は実装待ち。
+- 現在地：共通規約マスタ管理を実施中（2026-10-26）。standards 新設・初版登録済み、Weekly-Tasks・Aegis-Mesh・New-Sales-Cases に配布済み。Billing-Reconciliation-System と SA-management は本文が standards と違うため判断待ち（未配布）。予約3本の差し替えとTasks連携は完了済み・初回実行の確認待ち。
 - 最終更新：2026-10-26
 
 設計・管理側（Claude Chat）の判断・指示・結果・次工程の履歴。仕様正本ではない。
@@ -64,3 +64,9 @@
 - 結果：実装コミット 6627639・全テスト合格・GAS /dev 反映済み（反映後のGAS側ソースはローカルと一致、公開版1と deployment 一覧は不変）。詳細は TASK_CURRENT.md の2026-10-26の節
 - 要確認（実装側が決めた点。ユーザーの判断待ち）：取り込むToDoの範囲（全リストの未完了）／採用済みの判定（タスク名の一字一致）／希望週の扱い／CHAT_CURRENT の読み先と同日の比べ方／マニュアル本文の通常業務手順を「終了」と明記
 - 次工程・未決：予約3本の本文差し替えと一時停止・実行先チャットの確認、Tasks連携の再承認、差し替え後の初回実行の確認。共通規約マスタ管理の実装着手順はユーザーが指示する
+
+## 2026-10-26 共通規約マスタ管理：実施（途中。2件は判断待ち）
+- 参照：追加改修指示書_共通規約マスタ管理.md §3。standards 新設は Claude Code に作成権限が無かったため、ユーザーが Web 画面で作成（Private・README付き）
+- 実施：standards に2文書を初版として登録（コミット e6dd81e39745eb22bdafee84d083804819ae07ed。Weekly-Tasks main af3eb2e の現行版と一字一致）と README（改訂手順）。写しの冒頭2行を追加：Weekly-Tasks（本コミット）・Aegis-Mesh（6d78f58）・New-Sales-Cases（8ed7284）。書き込み前の最新SHA確認済み（Aegis-Mesh 3bff421・New-Sales-Cases e62a143・Billing 0264fbb・SA bea6604・Weekly-Tasks main af3eb2e）
+- 判断待ち（指示書の前提と実際が違う。推測せず停止）：①Billing-Reconciliation-System の2文書のうち標準規約は「更新日」の1行だけが standards と違う（2026-10-22／standards は 2026-10-16）。②SA-management の標準規約は「更新日」（2026-10-23）と、共通節「工程完了とmainへの反映」が案件版の「（AIメモSA管理での適用）」節に置き換わっている点が違う。指示書は「本文は変更しない」かつ「本文一致を照合」と求めており、両立しない
+- 次工程：上の2件の扱いをユーザーが決める。決定後に配布・全5件の一致照合・standards README への配布結果の記録

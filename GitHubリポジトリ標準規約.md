@@ -1,3 +1,5 @@
+正本：https://github.com/xxxinakenxxx-hash/standards
+写しの元：e6dd81e39745eb22bdafee84d083804819ae07ed
 # GitHubリポジトリ標準規約
 更新日：2026-10-16
 位置づけ：各開発案件で共通利用するGitHub正本管理・配置・更新規約。開発手順は同階層の「ルールブック.md」を参照する。
