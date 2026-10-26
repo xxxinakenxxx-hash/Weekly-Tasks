@@ -1,5 +1,12 @@
 # TASK_CURRENT
 
+## 2026-10-26 追加改修「共通規約マスタ管理」実施（途中。Billing・SA-management は判断待ち）
+- 状態：standards 新設・初版登録済み（コミット e6dd81e39745eb22bdafee84d083804819ae07ed）。配布済み：Weekly-Tasks・Aegis-Mesh（6d78f58）・New-Sales-Cases（8ed7284）。未配布：Billing-Reconciliation-System・SA-management（2文書の本文が standards と違い、指示書の「本文は変更しない」「本文一致の照合」が両立しないため停止）。本工程は「完了」ではない。IS-06は継続中のまま。コード・GASの変更なし
+- standards の新設：Claude Code の連携では作成権限が無い（403）ため、ユーザーが Web 画面で作成した
+- 一致照合（実施済み分）：standards の2文書は Weekly-Tasks main af3eb2e と一字一致。配布済み3リポジトリは、冒頭2行を除いた本文が standards と一字一致
+- 配布先の最新SHA確認（書き込み前）：Aegis-Mesh 3bff421、New-Sales-Cases e62a143、Billing 0264fbb、SA-management bea6604、Weekly-Tasks main af3eb2e。書き込みは各 main へ直接コミット（ユーザー承認）
+- 実装中に決めた点：「写しの元」のSHAは「2文書を最後に変更した standards のコミット」と定義し README に記載
+
 ## 2026-10-26 追加改修「現在地同期改善」＋追加実装「週間入口拡充」実装・GAS /dev 反映
 - 状態：GitHub実装済み・自動テスト合格（21ファイル全件）・GAS /dev 反映済み・GAS側ソース照合済み。予約3本の本文差し替え・Google Tasks連携の有効化（権限の再承認）・/dev 実画面確認は未実施（ユーザー実機作業待ち）。公開版1は不変。IS-06は継続中のまま
 - 根拠：docs/implementation/追加改修指示書_現在地同期改善.md（項目1〜4）、追加実装指示書_週間入口拡充.md（項目1〜3）。2本を1工程で実装。静的確認はユーザー承認済み（2026-10-26。予約手順書は3本、mainを d2c77f8 から新設、マニュアルはTODO説明追加・付録A注記、Tasksは enabledAdvancedServices のみ）
