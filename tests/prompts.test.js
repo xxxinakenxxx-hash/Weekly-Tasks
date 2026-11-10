@@ -8,7 +8,7 @@ let pass = 0, fail = 0;
 function t(name, fn) { try { fn(); pass++; console.log('PASS ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n  ' + e.message); } }
 const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 // コードブロック（```〜```）の中＝Workに渡す指示文
-const block = s => { const m = s.match(/^```\n([\s\S]*?)\n```$/m); assert.ok(m, 'コードブロックがない'); return m[1]; };
+const block = s => { const m = s.match(/^```\r?\n([\s\S]*?)\r?\n```$/m); assert.ok(m, 'コードブロックがない'); return m[1]; };
 const weekly = block(read('docs/prompts/desktop_work_ai.md'));
 const daily = block(read('docs/prompts/desktop_work_ai_daily.md'));
 const criteria = s => { const i = s.indexOf('判定基準（週次・日次共通'); const j = s.indexOf('\nルール：', i); assert.ok(i >= 0 && j > i, '判定基準の節がない'); return s.slice(i, j); };
@@ -193,7 +193,7 @@ t('旧条件（前回の結果かシートの少なくとも一方を読めれ�
 });
 t('下流：案件キー確認不能の案件は、週間分析ではタスク案に出さず、朝ブリーフでは案件キー・taskId を空にして同期しない', () => {
   const wa = block(read('docs/prompts/project_weekly_analysis.md')), mb = block(read('docs/prompts/project_morning_brief.md'));
-  assert.ok(wa.includes('要確認欄が「案件キー確認不能：」で始まる案件はタスク案に出さず、コーションに「要確認：案件キー確認不能：案件名／内容」と書く'));
+  assert.ok(wa.includes('場所が確認できない、または要確認欄が「案件キー確認不能：」で始まる案件も、タスク案から除外しない。案件名・取得できた現在地・確認事項を残し、「案件キー」は空文字、例外情報には「要確認：案件キー確認不能：案件名／内容」と書く'));
   assert.ok(mb.includes('場所が書かれていない（「なし」など。案件キー確認不能の案件）場合は空にし、taskId も空にする（同期させない）'));
   // アプリは案件キー・taskId のない項目を同期しない（既存の動き。アプリは変えていない）
   const g = load(); g.setupSheets();
@@ -237,7 +237,7 @@ t('週間分析の指示文：AI案件は今週すでに行があっても必ず
   const wa = block(read('docs/prompts/project_weekly_analysis.md'));
   assert.ok(wa.includes('これと同じ通常タスクはタスク案に出さない'));
   assert.ok(wa.includes('AI案件.md の案件は、対象週に同じ案件の行がすでにあっても、必ずすべてタスク案に出す'));
-  assert.ok(wa.includes('タスク名は対象週のその行と同じ名前にし、案件キーを必ず書く'));
+  assert.ok(wa.includes('タスク名は対象週のその行と同じ名前にし、案件キーを確認できた案件はそのキーを必ず書く'));
 });
 
 // ---- 2026-10-14：案件キー（「TASK_CURRENT.md：」の行）への取得経路の混入を、発生源（巡回指示文）で防ぐ（2026-10-15：固定5件ではなく形で判定） ----
@@ -288,9 +288,9 @@ t('週間分析の指示文：案件キーは場所だけ・2つの形（固定�
   assert.ok(wa.includes('    ・C:\\Users\\inamori240\\Documents\\（フォルダ名）\\tasks\\TASK_CURRENT.md'));
   assert.ok(wa.includes('    ・https://github.com/xxxinakenxxx-hash/（リポジトリ名）/blob/HEAD/tasks/TASK_CURRENT.md'));
   assert.ok(wa.includes('文字列の中の「\\」（Windowsの場所の区切り）は、JSONでは「\\\\」と2つ重ねて書く'));
-  assert.ok(wa.includes('AI案件の「案件キー」が上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）であること、AI案件.md のすべての案件（件数は決まっていない。案件キー確認不能の案件は除く）がタスク案にあり、各案の「案件キー」が AI案件.md のその案件の「TASK_CURRENT.md：」の値と一字も違わないこと（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）'));
+  assert.ok(wa.includes('非空のAI案件「案件キー」が上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）であること、AI案件.md のすべての案件（件数は決まっていない）がタスク案にあり、各案の非空「案件キー」が AI案件.md のその案件の「TASK_CURRENT.md：」の値と一字も違わないこと（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）'));
   assert.ok(wa.includes('AI案件.md の案件は、対象週に同じ案件の行がすでにあっても、必ずすべてタスク案に出す'));
-  assert.ok(wa.includes('タスク名や他の案件から推測して書かない'));
+  assert.ok(wa.includes('タスク名や他の案件からキーを推測・補正しない'));
 });
 
 // ---- 2026-10-22 JSON手渡しの自動化（追加改修指示書 JSON手渡し自動化 v1.1）：JSONは画面に出さず Drive のファイルへ保存する ----
@@ -300,8 +300,8 @@ const importSrc = read('src/Import.js');
 t('日次予約（付録E）：前段の巡回のあとに【後段】があり、後段の文は朝ブリーフの指示文（付録C）と一字も違わない', () => {
   const i = daily.indexOf('\n【後段】続けて朝ブリーフを作る');
   assert.ok(i > 0, '後段がない');
-  assert.ok(daily.slice(0, i).endsWith('前回あって今回見つからない案件を報告する。\n'), '前段の最後の文のあとに続いていない');
-  assert.ok(daily.endsWith('\n\n' + morning), '後段の文が付録Cと一致しない');
+  assert.ok(daily.slice(0, i).includes('保存後、ファイル名・保存先・案件数（ローカルで見つけた件数・GitHub で見つけた件数・同じ案件と判定した件数・案件キー確認不能の件数）、既存のキーを探すために読めたもの・読めなかったもの（前回の結果・「タスク」シート）・確認済みの件数・確認済み以外の件数、404以外のエラーのリポジトリ、前回あって今回見つからない案件を報告する。'), '前段の報告文がない');
+  assert.ok(daily.replace(/\r\n/g, '\n').endsWith('\n\n' + morning.replace(/\r\n/g, '\n')), '後段の文が付録Cと一致しない');
   assert.ok(daily.slice(i).includes('上の巡回の決まり（案件の見つけ方・判定基準・書式）は、後段では使わない'));
   // 前段の判定基準は週次と同じまま（後段を足しても変わらない）
   assert.strictEqual(criteria(weekly), criteria(daily));
@@ -383,7 +383,7 @@ t('現在地同期改善 項目4：日次の前段の禁止文だけを「保存
   const i = daily.indexOf('\n【後段】続けて朝ブリーフを作る');
   const front = daily.slice(0, i), back = daily.slice(i);
   assert.strictEqual(front.split('\n').filter(l => l.includes('Obsidian Vault')).length, 1);   // 前段で変えたのはこの1行だけ
-  assert.ok(back.endsWith('\n\n' + morning));                                                    // 後段は付録Cと一字も違わない
+  assert.ok(back.replace(/\r\n/g, '\n').endsWith('\n\n' + morning.replace(/\r\n/g, '\n')));                                                    // 後段は付録Cと一字も違わない
   assert.ok(morning.includes('「週間タスク」フォルダ（Obsidian Vault）の「通常業務.md」「AI案件.md」は読まないでください。「週間タスク」フォルダには保存しないでください。'));
   assert.ok(back.includes('上の巡回の決まり（案件の見つけ方・判定基準・書式）は、後段では使わない'));
   // 朝ブリーフの材料は従来どおり（AI案件.md の内容を朝ブリーフの本文に使わない）

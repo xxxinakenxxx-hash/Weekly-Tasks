@@ -65,11 +65,11 @@ t('複数曜日：週間タスクJSONの候補（配列の曜日）を1件とし
   g.commitWeekBoard(W, { creates: [{ title: 'AI', kind: 'AI案件', day: ['月', '水'] }] });
   assert.deepStrictEqual(g.getTasks(W).map(x => x.day), ['月,水']);
 });
-t('複数曜日：持越しの取り込みは未配置で作る（曜日は引き継がない、既存どおり）', () => {
+t('複数曜日：持越しの取り込みは保存済みの曜日を引き継ぐ', () => {
   const g = setup();
   g.createTask({ targetWeek: P, title: '持越', kind: '通常タスク', day: '月,火', status: '持越し' });
   g.commitWeekBoard(W, { creates: g.getCarryCandidates(W).candidates });
-  assert.strictEqual(g.getTasks(W)[0].day, '');
+  assert.strictEqual(g.getTasks(W)[0].day, '月,火');
 });
 
 // ---- 日次AI現在地の同期 ----

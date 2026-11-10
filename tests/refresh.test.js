@@ -30,6 +30,15 @@ t('分析結果で更新：ほかの欄（曜日・状態・メモ・指示ル�
   assert.deepStrictEqual([x.title, x.day, x.status, x.memo, x.instructFrom, x.implementTo, x.caseKey], ['機械売上管理システム', '月', '進行中', 'メモ', 'ChatGPT', 'Codex', K]);
   assert.strictEqual(g.getTasks(W).length, before);
 });
+t('案件キー要確認：同一週の既存案件の状態・履歴・案件キーを保持し、現在地と例外だけ更新する', () => {
+  const { g, a } = setup();
+  g.updateTask(a.taskId, { aiConfirmedAt: '2026-10-12 06:20' });
+  const beforeHistory = g.getHistory(a.taskId).length;
+  g.commitWeekBoard(W, { refreshes: [{ taskId: a.taskId, changes: { aiPosition: '新しい現在地', exception: '要確認：案件キー確認不能（形式不一致。値は補正していません）' } }] });
+  const x = row(g, a.taskId);
+  assert.deepStrictEqual([x.status, x.memo, x.caseKey, x.aiPosition, x.exception], ['進行中', 'メモ', K, '新しい現在地', '要確認：案件キー確認不能（形式不一致。値は補正していません）']);
+  assert.strictEqual(g.getHistory(a.taskId).length, beforeHistory + 3);
+});
 t('分析結果で更新：変更は履歴に「修正」で残る', () => {
   const { g, a } = setup();
   g.commitWeekBoard(W, { refreshes: [{ taskId: a.taskId, changes: { aiPosition: '新', exception: '' } }] });

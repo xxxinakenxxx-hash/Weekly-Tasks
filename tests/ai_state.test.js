@@ -249,6 +249,22 @@ t('前の週の確認済み（先週の日付）は、週間分析の新しい�
   const n = g.getTasks(N)[0];
   assert.deepStrictEqual([n.aiPosition, n.aiConfirmedAt, n.aiLatestPosition], ['週次の新しい値', '', '先週金曜の確認']);
 });
+t('翌週の同一案件は、案件キーで保存済み状態を引き継ぎ、新規案件だけ未着手にする', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'A', kind: 'AI案件', caseKey: KA, status: '進行中', day: '水', result: '既存結果', memo: '既存メモ', handover: '既存申し送り', aiPosition: '前週現在地' });
+  g.commitWeekBoard(N, { creates: [{ title: 'A', kind: 'AI案件', caseKey: KA, aiPosition: '今週現在地' }, { title: '新規', kind: 'AI案件', caseKey: KB }] });
+  const a = g.getTasks(N).find(x => x.title === 'A'), b = g.getTasks(N).find(x => x.title === '新規');
+  assert.deepStrictEqual([a.status, a.day, a.result, a.memo, a.handover, a.aiPosition], ['進行中', '水', '既存結果', '既存メモ', '既存申し送り', '今週現在地']);
+  assert.strictEqual(b.status, '未着手');
+});
+t('翌週の案件キーが前週で重複して特定不能なら、別行の状態を流用しない', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: 'A1', kind: 'AI案件', caseKey: KA, status: '完了', memo: 'A1' });
+  g.createTask({ targetWeek: W, title: 'A2', kind: 'AI案件', caseKey: KA, status: '進行中', memo: 'A2' });
+  g.commitWeekBoard(N, { creates: [{ title: 'A', kind: 'AI案件', caseKey: KA }] });
+  const a = g.getTasks(N)[0];
+  assert.deepStrictEqual([a.status, a.memo], ['未着手', '']);
+});
 t('月曜：週間分析の現在地が前の週の確認済み現在地と同じなら、確認日時も写す。空欄なら前の週の現在地と確認日時を写す', () => {
   const g = setup();
   g.createTask({ targetWeek: W, title: 'A', kind: 'AI案件', caseKey: KA });

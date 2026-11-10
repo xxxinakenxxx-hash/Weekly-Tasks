@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(root, f), 'utf8');
-const block = f => { const m = read(f).match(/^```\n([\s\S]*?)\n```$/m); if (!m) throw new Error('コードブロックがない：' + f); return m[1]; };
+const block = f => { const m = read(f).match(/^```\r?\n([\s\S]*?)\r?\n```$/m); if (!m) throw new Error('コードブロックがない：' + f); return m[1]; };
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const APPENDIX = {
   A: 'docs/prompts/web_work_weekly.md',

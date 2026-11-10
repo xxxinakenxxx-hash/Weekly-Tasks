@@ -78,6 +78,7 @@
       try { data = JSON.parse(String(text).trim()); } catch (e) { throw new Error('JSONとして読めません：' + e.message); }
       var errors = [];
       if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('JSONの一番外側は { } にしてください。');
+      data = normalizeHandoffCaseKeys(data);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data['対象週'] || ''))) errors.push('「対象週」は yyyy-MM-dd で指定してください。');
       if (typeof data['見立て'] !== 'string') errors.push('「見立て」は文字列で指定してください。');
       if (!Array.isArray(data['コーション'])) errors.push('「コーション」は配列で指定してください。');
@@ -105,6 +106,23 @@
       });
       if (errors.length) throw new Error(errors.join(' '));
       return data;
+    }
+
+    // 案件キーの形式不一致は、その案件だけを要確認として残す。
+    // キーの推測補正はせず、正常な案の読込は止めない。
+    function normalizeHandoffCaseKeys(data) {
+      var out = JSON.parse(JSON.stringify(data));
+      if (!Array.isArray(out['タスク案'])) return out;
+      out['タスク案'].forEach(function (t) {
+        if (!t || typeof t !== 'object' || t['種別'] !== 'AI案件') return;
+        var key = t['案件キー'];
+        if (key === undefined || key === '') return;
+        if (typeof key === 'string' && /TASK_CURRENT\.md\s*$/i.test(key)) return;
+        t['案件キー'] = '';
+        var note = '要確認：案件キー確認不能（形式不一致。値は補正していません）';
+        t['例外情報'] = t['例外情報'] ? String(t['例外情報']) + '／' + note : note;
+      });
+      return out;
     }
 
     // 読み込んだ分析結果（貼付の手動取込、または Drive の 週間分析.json の「案」）を候補として表示する

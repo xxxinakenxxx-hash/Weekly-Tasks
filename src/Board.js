@@ -10,9 +10,11 @@ var BOARD_EDITABLE_KEYS = ['title', 'day', 'priority', 'focus', 'status', 'resul
 var CONFIRM_REQUIRED_EXCEPTIONS = ['不一致', 'チャット未確認'];
 // 候補の採用時に保存する項目（IS-04で持越し元タスクIDを追加）
 // 追加改修④：指示ルートも翌週へ引き継ぐ
-var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey', 'weekPlan'];
+var BOARD_CREATE_KEYS = ['title', 'kind', 'day', 'priority', 'focus', 'status', 'result', 'memo', 'exception', 'aiPosition', 'handover', 'sourceTaskId', 'instructFrom', 'implementTo', 'caseKey', 'weekPlan'];
 // 追加改修③：持越し・次週候補の取り込みでは、現在地の確認日時と最新取得も写す（現在地の根拠を失わない）
 var CARRY_AI_STATE_KEYS = ['aiConfirmedAt', 'aiLatestAt', 'aiLatestResult', 'aiLatestPosition'];
+// 同一案件の翌週行へ引き継ぐ保存済み状態。案件を一意に特定できる場合だけ使う。
+var CARRY_CASE_STATE_KEYS = ['status', 'day', 'result', 'memo', 'handover'];
 // 翌週へ展開する状態（「保留」は含めない：翌週へ自動で回さず、元の週に保留のまま残す）
 var CARRY_STATUSES = ['次週候補', '持越し'];
 // 週間分析の読み込み直し（2026-10-12）：今週すでにあるAI案件の行を、読み込んだ分析結果で更新できる項目
@@ -317,8 +319,8 @@ function getCarryCandidates(targetWeek) {
     if (CARRY_STATUSES.indexOf(t.status) < 0) return;
     if (carriedIds.indexOf(t.taskId) >= 0 || titles.indexOf(String(t.title)) >= 0) { excluded.push(String(t.title)); return; }
     candidates.push({
-      title: t.title, kind: t.kind, day: '', priority: t.priority, focus: t.focus === true, status: '未着手',
-      exception: t.exception, aiPosition: t.aiPosition, handover: t.handover, sourceTaskId: t.taskId,
+      title: t.title, kind: t.kind, day: t.day, priority: t.priority, focus: t.focus === true, status: t.status,
+      result: t.result, memo: t.memo, exception: t.exception, aiPosition: t.aiPosition, handover: t.handover, sourceTaskId: t.taskId,
       instructFrom: String(t.instructFrom || ''), implementTo: String(t.implementTo || ''), caseKey: String(t.caseKey || ''),
       sourceStatus: t.status
     });
@@ -360,6 +362,7 @@ function caseAiState_(all, targetWeek, fields) {
   var prev = latestCaseRow_(all, targetWeek, fields.caseKey).row;
   if (!prev) return {};
   var out = {};
+  CARRY_CASE_STATE_KEYS.forEach(function (k) { if (prev[k] !== undefined) out[k] = prev[k]; });
   ['aiLatestAt', 'aiLatestResult', 'aiLatestPosition'].forEach(function (k) { if (String(prev[k] || '') !== '') out[k] = prev[k]; });
   var pos = String(fields.aiPosition || '').trim();
   if (prev.aiConfirmedAt && String(prev.aiConfirmedAt).slice(0, 10) >= String(targetWeek) && String(prev.aiPosition || '') !== '') {

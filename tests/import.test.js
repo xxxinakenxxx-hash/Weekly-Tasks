@@ -277,6 +277,33 @@ t('週間分析：合格した今週の 週間分析.json は「案」として�
   assert.ok(!g.getTasks(WEEK).some(x => x.title === '資料提出'));
   assert.strictEqual(g.getWeekBoard(WEEK).analysis, null);
 });
+t('週間分析：AI案件2件の案件キー形式不一致でも、正常な案と通常タスクを残し、問題案件だけ要確認にする', () => {
+  const { g } = setup();
+  putFile(g, '週間分析.json', JSON.stringify(analysisJson(d => {
+    d['タスク案'].push(
+      { タスク名: '正常AI', 種別: 'AI案件', 案件キー: KEY_GH, AI案件現在地: 'P1', 例外情報: '' },
+      { タスク名: '新販売事例', 種別: 'AI案件', 案件キー: 'https://github.com/xxxinakenxxx-hash/New-Sales-Cases', AI案件現在地: 'P2', 例外情報: '不一致：工程差異' },
+      { タスク名: 'Aegis-Mesh', 種別: 'AI案件', 案件キー: 'https://github.com/xxxinakenxxx-hash/Aegis-Mesh.git', AI案件現在地: 'P3', 例外情報: '' }
+    );
+  })));
+  const before = snapshot(g);
+  const r = g.getWeeklyDraft(WEEK);
+  assert.strictEqual(r.status.result, '案あり');
+  assert.strictEqual(r.status.count, 5);
+  assert.strictEqual(r.draft['タスク案'].length, 5);
+  const bad = r.draft['タスク案'].filter(x => x['タスク名'] === '新販売事例' || x['タスク名'] === 'Aegis-Mesh');
+  assert.strictEqual(bad.length, 2);
+  bad.forEach(x => {
+    assert.strictEqual(x['案件キー'], '');
+    assert.match(x['例外情報'], /要確認：案件キー確認不能/);
+  });
+  assert.strictEqual(r.draft['タスク案'].find(x => x['タスク名'] === '正常AI')['案件キー'], KEY_GH);
+  assert.strictEqual(r.draft['タスク案'].find(x => x['タスク名'] === '資料提出')['種別'], '通常タスク');
+  const again = g.getWeeklyDraft(WEEK);
+  assert.strictEqual(again.status.result, '案あり');
+  assert.strictEqual(again.status.checkKey, r.status.checkKey);
+  assert.strictEqual(snapshot(g), before);
+});
 t('週間分析：トリガーも内容を保存せず、結果（案あり）だけを記録する', () => {
   const { g } = setup();
   putFile(g, '週間分析.json', JSON.stringify(analysisJson()));
@@ -308,12 +335,12 @@ t('週間分析：古い対象週・今週以外の週は「案」にしない',
   assert.match(r.status.reason, /対象週（2026-10-12）が今週（2026-10-19）ではありません/);
   assert.strictEqual(JSON.stringify(g.getWeeklyDraft('2026-10-12')), JSON.stringify({ targetWeek: '2026-10-12', draft: null, status: null }));
 });
-t('週間分析：検証不合格（種別・曜日・案件キーの形）は「案」にせず、理由を返す', () => {
+t('週間分析：検証不合格（種別・曜日）は「案」にせず、案件キー形式不一致だけは個別要確認で残す', () => {
   const { g } = setup();
   putFile(g, '週間分析.json', JSON.stringify(analysisJson(d => { d['タスク案'][0]['種別'] = '雑務'; d['タスク案'][0]['曜日'] = '土'; d['タスク案'][1]['案件キー'] = 'repo-b.git'; })));
   const r = g.getWeeklyDraft(WEEK);
   assert.strictEqual(r.draft, null);
-  ['1件目：「種別」', '1件目：「曜日」', '2件目：「案件キー」'].forEach(x => assert.ok(r.status.reason.includes(x), x));
+  ['1件目：「種別」', '1件目：「曜日」'].forEach(x => assert.ok(r.status.reason.includes(x), x));
 });
 t('週間分析：ファイルなし・解析不能は取込失敗（前の週の内容を今週の案として出さない）', () => {
   const { g } = setup();

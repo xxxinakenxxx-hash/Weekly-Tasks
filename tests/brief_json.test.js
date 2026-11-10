@@ -110,7 +110,7 @@ t('案件名だけが一致しても（案件キー・taskIdなし）同期し�
   assert.strictEqual(row(g, ids.machine).aiPosition, '前の現在地：機械売上管理システム');
 });
 // ---- 指示文（docs/prompts/project_morning_brief.md）に再発防止の決まりがあること ----
-const block = s => s.match(/^```\n([\s\S]*?)\n```$/m)[1];
+const block = s => s.match(/^```\r?\n([\s\S]*?)\r?\n```$/m)[1];
 const prompt = block(fs.readFileSync(path.join(__dirname, '..', 'docs/prompts/project_morning_brief.md'), 'utf8'));
 t('指示文：案件キーは場所（TASK_CURRENT.md で終わる部分）だけ。説明は「内容」へ。2つの形（固定の一覧なし。2026-10-15）', () => {
   assert.ok(prompt.includes('ファイルの場所（TASK_CURRENT.md で終わる部分）だけを一字も変えずに書く'));

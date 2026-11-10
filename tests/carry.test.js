@@ -34,7 +34,7 @@ t('持越し候補：前週の次週候補・持越しだけを候補として�
   assert.strictEqual(g.getTasks(N).length, 0);
   const c = r.candidates[1];
   assert.deepStrictEqual([c.sourceTaskId, c.status, c.day, c.kind, c.priority, c.aiPosition, c.exception, c.handover],
-    [ids['持越しタスク'], '未着手', '', 'AI案件', 5, 'IS-02 途中', '不一致：x', '申し送り4']);
+    [ids['持越しタスク'], '持越し', '水', 'AI案件', 5, 'IS-02 途中', '不一致：x', '申し送り4']);
 });
 t('持越し確定：翌週に新しい行を作り、持越し元IDで紐付け、前週の行と履歴は変わらない', () => {
   const g = setup(); const ids = seed(g);
@@ -42,8 +42,8 @@ t('持越し確定：翌週に新しい行を作り、持越し元IDで紐付け
   const r = g.getCarryCandidates(N);
   g.commitWeekBoard(N, { creates: confirmAll(r.candidates) });
   const next = g.getTasks(N);
-  assert.deepStrictEqual(next.map(x => [x.title, x.sourceTaskId, x.status, x.result, x.memo]),
-    [['次週候補タスク', ids['次週候補タスク'], '未着手', '', ''], ['持越しタスク', ids['持越しタスク'], '未着手', '', '']]);
+  assert.deepStrictEqual(next.map(x => [x.title, x.sourceTaskId, x.status, x.day, x.result, x.memo]),
+    [['次週候補タスク', ids['次週候補タスク'], '次週候補', '水', '結果3', 'メモ3'], ['持越しタスク', ids['持越しタスク'], '持越し', '水', '結果4', 'メモ4']]);
   assert.strictEqual(JSON.stringify([g.getTasks(W), g.getHistory().slice(0, JSON.parse(before)[1].length)]), before);
   assert.strictEqual(g.getHistory().length, JSON.parse(before)[1].length + 2);
 });

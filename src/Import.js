@@ -160,14 +160,33 @@ function checkAnalysis_() {
   var kind = importKind_(parsed.data);
   if (kind.error) return fail(kind.error);
   if (kind.kind !== 'analysis') return fail(IMPORT.ANALYSIS_FILE + ' の中身が朝ブリーフのJSONです（取り込みません）');
-  var errors = handoffErrors_(parsed.data);
+  // 案件キーの形式不一致は、その案件だけを要確認として残す。
+  // キーの推測補正はせず、正常な通常タスク・AI案件の案は継続する。
+  var normalized = normalizeHandoffCaseKeys_(parsed.data);
+  var errors = handoffErrors_(normalized);
   if (errors.length) return fail('検証不合格：' + errors.join(' '));
-  if (parsed.data['対象週'] !== week) return fail('週間分析.json の対象週（' + parsed.data['対象週'] + '）が今週（' + week + '）ではありません');
-  var count = parsed.data['タスク案'].length;
+  if (normalized['対象週'] !== week) return fail('週間分析.json の対象週（' + normalized['対象週'] + '）が今週（' + week + '）ではありません');
+  var count = normalized['タスク案'].length;
   // 同じファイルを確かめ直しただけなら記録を書き換えない（確認日時だけが増えないように）
   var status = prev && prev.checkKey === rec.checkKey && prev.result === IMPORT_RESULT.DRAFT ? prev
     : writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, { result: IMPORT_RESULT.DRAFT, count: count }));
-  return { status: status, data: parsed.data };
+  return { status: status, data: normalized };
+}
+
+// 週間分析の案件キーを案件単位で扱う。値そのものは補正せず、形式不一致の案件だけ要確認にする。
+function normalizeHandoffCaseKeys_(data) {
+  var out = JSON.parse(JSON.stringify(data));
+  if (!Array.isArray(out['タスク案'])) return out;
+  out['タスク案'].forEach(function (t) {
+    if (!t || typeof t !== 'object' || t['種別'] !== 'AI案件') return;
+    var key = t['案件キー'];
+    if (key === undefined || key === '') return;
+    if (typeof key === 'string' && /TASK_CURRENT\.md\s*$/i.test(key)) return;
+    t['案件キー'] = '';
+    var note = '要確認：案件キー確認不能（形式不一致。値は補正していません）';
+    t['例外情報'] = t['例外情報'] ? String(t['例外情報']) + '／' + note : note;
+  });
+  return out;
 }
 
 // 週間分析JSON（docs/HANDOFF_FORMAT.md）の検証（画面 src/weekly.html の parseHandoff と同じ決まり）

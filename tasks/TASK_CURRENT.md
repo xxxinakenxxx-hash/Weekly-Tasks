@@ -1,5 +1,17 @@
 # TASK_CURRENT
 
+## 2026-11-11 週次JSON全件停止の是正・2026-11-09週復旧準備（ローカル実装・未反映）
+- 状態：ローカル修正・マニュアル再生成・全自動テスト完了。GitHub push、GAS更新・デプロイ、予約変更、Drive/Sheets本番更新は未実施
+- 案件キー不一致：AI案件の形式不一致キーだけを推測補正せず空欄にし、当該行へ「要確認：案件キー確認不能」を付与。正常10案件・通常タスクは同一JSONから継続し、問題案件も案に残す。全体構造・対象週・通常タスク不正・非AI案件のキー不正・保存時検証は停止
+- 状態引継ぎ：案件キーで前週の同一案件を一意に特定できる場合、状態・曜日・実施結果・メモ・申し送り・AI現在地・最新取得を引き継ぐ。前週キーが重複するなど特定不能、または案件キーがない場合は別案件の状態を流用せず新規初期値（未着手）とする。持越し・次週候補は持越し元IDで一意に特定し、保存済み状態を引き継ぐ
+- 変更：`src/Board.js`、`src/Import.js`、`src/weekly.html`、`tools/build_manual.js`、`src/view_manual.html`、関連テスト、`docs/DB_SCHEMA.md`、`docs/implementation/追加改修指示書_AI案件巡回の継続性・不一致判定_v1.0.md`、`docs/HANDOFF_FORMAT.md`、`docs/prompts/project_weekly_analysis.md`
+- 改行依存修正：`brief_json.test.js`・`prompts.test.js`・`tools/build_manual.js` のコードブロック検出を LF/CRLF 両対応に修正。現行仕様とずれていた `prompts.test.js` の期待値も、案件キー確認不能を案に残す仕様・現在の予約文に合わせた
+- テスト：`tests/*.test.js` 全件合格、`node tools/build_manual.js` 合格、`node tests/manual.test.js` 11件合格、`git diff --check` 合格。状態保持・同一週再読込・翌週引継ぎ・全状態値・案件キー不一致の部分継続を含む
+- 既存3件の失敗：`brief_json.test.js`・`prompts.test.js`・`manual.test.js` は改行形式依存と現行仕様文との期待値ずれが原因で、今回のGAS受入ロジックの不具合ではなかった。ローカルテスト修正後は全件合格
+- 反映前提：`tools/push_gas_checked.js` は dry-run ではなく、clean確認後に `clasp push --force` を実行する唯一の入口。今回の禁止範囲により未実行。反映時は、コミット済みclean確認→マニュアル再生成・manual.test→差分なし→`.clasp.json` の scriptId/rootDir確認→GAS `/dev` push→deployment不変確認の順
+- 本番復旧順序：①GitHub反映承認後に対象差分をpush ②GAS反映承認後に上記入口で `/dev` へ反映・ソース照合 ③ユーザーが予約「【週間タスク】週間分析JSON生成」の本文を最新版付録Bへ差替え、再開・プロジェクト・時刻を確認 ④予約で2026-11-09週の `週間分析.json` を同名同ID上書き再生成 ⑤GAS取込後、週間画面で正常10案件・通常タスク・要確認2案件を確認 ⑥既存状態・履歴・持越しが維持され、確定前にシートが書かれていないことを確認 ⑦ユーザーが画面で確定保存 ⑧再読込して同じ週・同じ候補・同じ状態を確認
+- 本番権限・確認：GitHub write権限、対象GAS scriptの編集/`clasp`認証、予約編集権限、Drive同名JSONの同一ファイル更新権限、対象スプレッドシートの読取・確定保存権限が必要。実施後は公開版deployment不変、予約の無関係設定不変、10案件継続、2案件のキー空欄＋要確認、通常タスク継続、確定前Sheets不変、確定後の再読込一致を確認
+
 ## 2026-10-26 追加改修「共通規約マスタ管理」実施・完了
 - 状態：完了（コード・GASの変更なし。IS-06は継続中のまま）。standards（Private）を新設し、2文書の正本を初版登録（コミット e6dd81e39745eb22bdafee84d083804819ae07ed）。5リポジトリの写しを各 main へ配布し、全件一致照合済み
 - standards の新設：Claude Code の連携では作成権限が無い（403）ため、ユーザーが Web 画面で作成した
