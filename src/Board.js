@@ -166,7 +166,7 @@ function commitWeekBoard(targetWeek, payload) {
     creates.forEach(function (c) {
       var fields = Object.assign(pick_(c, BOARD_CREATE_KEYS), { targetWeek: targetWeek });
       if (c.sourceTaskId) Object.assign(fields, carryAiState_(c.sourceTaskId));
-      else if (c.kind === 'AI案件' && String(c.caseKey || '').trim()) {
+      else if (c.kind === 'AI案件') {
         if (!allForCase) allForCase = getTasks();
         Object.assign(fields, caseAiState_(allForCase, targetWeek, fields));
       }
@@ -358,8 +358,39 @@ function latestCaseRow_(all, targetWeek, key) {
  * - 新しい行の「AI案件現在地」が空欄なら、前の週の「AI案件現在地」と「現在地確認日時」を写す
  * - 新しい行の「AI案件現在地」が前の週と同じなら「現在地確認日時」を写す。違う値（週次巡回の新しい値）なら写さない（日次で未確認）
  */
+
+/**
+ * 案件キーが確認不能の案に限って、前週と同名のAI案件が一意な場合だけ引き継ぐ。
+ * 同名が複数ある・過去に異なるキーがある場合は別案件を混同しない。
+ * 案件キー自体は補正・引継ぎしない。
+ */
+function previousUnkeyedCaseRow_(all, targetWeek, fields) {
+  if (String(fields.caseKey || '').trim() || String(fields.exception || '').indexOf('案件キー確認不能') < 0) return { row: null };
+  var title = String(fields.title || '');
+  if (!title.trim()) return { row: null };
+  var prevWeek = addDaysYmd_(targetWeek, -7);
+  var hits = all.filter(function (t) {
+    return t.kind === 'AI案件' && String(t.targetWeek) === prevWeek && String(t.title) === title;
+  });
+  if (hits.length !== 1) return { row: null, ambiguous: hits.length > 1 };
+  var keys = [];
+  all.forEach(function (t) {
+    if (t.kind !== 'AI案件' || String(t.title) !== title || String(t.targetWeek) >= targetWeek) return;
+    var k = caseKeyNorm_(t.caseKey);
+    if (k && keys.indexOf(k) < 0) keys.push(k);
+  });
+  if (keys.length > 1) return { row: null, ambiguous: true };
+  var priorKey = caseKeyNorm_(hits[0].caseKey);
+  if (priorKey && all.filter(function (t) {
+    return t.kind === 'AI案件' && String(t.targetWeek) === prevWeek && caseKeyNorm_(t.caseKey) === priorKey;
+  }).length !== 1) return { row: null, ambiguous: true };
+  return { row: hits[0] };
+}
+
 function caseAiState_(all, targetWeek, fields) {
-  var prev = latestCaseRow_(all, targetWeek, fields.caseKey).row;
+  var prev = (String(fields.caseKey || '').trim()
+    ? latestCaseRow_(all, targetWeek, fields.caseKey)
+    : previousUnkeyedCaseRow_(all, targetWeek, fields)).row;
   if (!prev) return {};
   var out = {};
   CARRY_CASE_STATE_KEYS.forEach(function (k) { if (prev[k] !== undefined) out[k] = prev[k]; });
@@ -370,6 +401,26 @@ function caseAiState_(all, targetWeek, fields) {
   } else if (!pos && String(prev.aiPosition || '') !== '') { out.aiPosition = prev.aiPosition; if (prev.aiConfirmedAt) out.aiConfirmedAt = prev.aiConfirmedAt; }
   else if (pos && pos === String(prev.aiPosition || '').trim() && prev.aiConfirmedAt) out.aiConfirmedAt = prev.aiConfirmedAt;
   return out;
+}
+
+// 保存前の候補にも、保存時と同じ照合規則の引継ぎ結果を表示する。
+function previewCaseStates(targetWeek, candidates) {
+  assertWeek_(targetWeek);
+  var all = getTasks();
+  var states = (Array.isArray(candidates) ? candidates : []).map(function (c) {
+    if (!c || c.kind !== 'AI案件') return { found: false };
+    var match = String(c.caseKey || '').trim()
+      ? latestCaseRow_(all, targetWeek, c.caseKey)
+      : previousUnkeyedCaseRow_(all, targetWeek, c);
+    if (!match.row) return { found: false, ambiguous: !!match.ambiguous };
+    var inherited = caseAiState_(all, targetWeek, c);
+    var out = { found: true };
+    ['status', 'day', 'result', 'memo', 'handover', 'aiPosition'].forEach(function (k) {
+      if (inherited[k] !== undefined) out[k] = inherited[k];
+    });
+    return out;
+  });
+  return { targetWeek: targetWeek, states: states };
 }
 
 // 持越し元タスクIDの検証（前の週に実在すること、同じ元からの二重取り込みでないこと）

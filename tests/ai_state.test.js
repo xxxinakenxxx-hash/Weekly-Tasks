@@ -257,6 +257,39 @@ t('翌週の同一案件は、案件キーで保存済み状態を引き継ぎ�
   assert.deepStrictEqual([a.status, a.day, a.result, a.memo, a.handover, a.aiPosition], ['進行中', '水', '既存結果', '既存メモ', '既存申し送り', '今週現在地']);
   assert.strictEqual(b.status, '未着手');
 });
+t('翌週：確認不能の旧形式キーは空欄のまま、前週の同名AI案件が一意なら状態を引き継ぐ', () => {
+  const g = setup();
+  const items = [['新販売事例', 'New-Sales-Cases'], ['Aegis-Mesh', 'Aegis-Mesh']];
+  items.forEach(([title, repo]) => g.createTask({
+    targetWeek: W, title, kind: 'AI案件', caseKey: 'https://github.com/xxxinakenxxx-hash/' + repo + '/tasks/TASK_CURRENT.md',
+    status: '進行中', day: '水', result: '作業結果', memo: '既存メモ', handover: '申し送り', aiPosition: '前週現在地'
+  }));
+  const itemsNow = items.map(([title]) => ({ title, kind: 'AI案件', caseKey: '',
+    exception: '要確認：案件キー確認不能：形式不一致', aiPosition: '今週現在地' }));
+  const preview = g.previewCaseStates(N, itemsNow).states;
+  assert.deepStrictEqual(Array.from(preview, x => x.status), ['進行中', '進行中']);
+  g.commitWeekBoard(N, { creates: itemsNow });
+  g.getTasks(N).forEach(x => assert.deepStrictEqual(
+    [x.status, x.day, x.result, x.memo, x.handover, x.aiPosition, x.caseKey],
+    ['進行中', '水', '作業結果', '既存メモ', '申し送り', '今週現在地', '']));
+});
+t('翌週：キー空欄の根拠なし・同名重複・過去キー衝突・新規は状態を流用しない', () => {
+  const g = setup();
+  g.createTask({ targetWeek: W, title: '根拠なし', kind: 'AI案件', caseKey: KA, status: '進行中' });
+  g.createTask({ targetWeek: W, title: '重複', kind: 'AI案件', caseKey: KA, status: '進行中' });
+  g.createTask({ targetWeek: W, title: '重複', kind: 'AI案件', caseKey: KB, status: '完了' });
+  g.createTask({ targetWeek: '2026-09-28', title: '過去キー衝突', kind: 'AI案件', caseKey: KA });
+  g.createTask({ targetWeek: W, title: '過去キー衝突', kind: 'AI案件', caseKey: KB, status: '進行中' });
+  const items = [
+    { title: '根拠なし', kind: 'AI案件', caseKey: '' },
+    { title: '重複', kind: 'AI案件', caseKey: '', exception: '要確認：案件キー確認不能' },
+    { title: '過去キー衝突', kind: 'AI案件', caseKey: '', exception: '要確認：案件キー確認不能' },
+    { title: '新規', kind: 'AI案件', caseKey: '', exception: '要確認：案件キー確認不能' }
+  ];
+  assert.ok(g.previewCaseStates(N, items).states.every(x => !x.found));
+  g.commitWeekBoard(N, { creates: items });
+  g.getTasks(N).forEach(x => assert.deepStrictEqual([x.status, x.caseKey], ['未着手', '']));
+});
 t('翌週の案件キーが前週で重複して特定不能なら、別行の状態を流用しない', () => {
   const g = setup();
   g.createTask({ targetWeek: W, title: 'A1', kind: 'AI案件', caseKey: KA, status: '完了', memo: 'A1' });
