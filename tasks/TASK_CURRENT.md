@@ -3,7 +3,7 @@
 ## 2026-11-11 週次JSON全件停止の是正・2026-11-09週復旧（反映済み・確定保存待ち）
 - 状態：ローカル修正・マニュアル再生成・全自動テスト・GitHub push・GAS /dev反映・Drive同一ID上書き・/dev候補表示確認まで完了。今回の再検証でも全21テスト合格、GASは現行HEADと一致し `Script is already up to date`。予約変更、公開版deployment更新、Sheetsの「確定して保存」は未実施
 - 案件キー不一致：AI案件の形式不一致キーだけを推測補正せず空欄にし、当該行へ「要確認：案件キー確認不能」を付与。正常10案件・通常タスクは同一JSONから継続し、問題案件も案に残す。全体構造・対象週・通常タスク不正・非AI案件のキー不正・保存時検証は停止
-- 状態引継ぎ：案件キーで前週の同一案件を一意に特定できる場合、状態・曜日・実施結果・メモ・申し送り・AI現在地・最新取得を引き継ぐ。前週キーが重複するなど特定不能、または案件キーがない場合は別案件の状態を流用せず新規初期値（未着手）とする。持越し・次週候補は持越し元IDで一意に特定し、保存済み状態を引き継ぐ
+- 状態引継ぎ：案件キーで前週の同一案件を一意に特定できる場合、状態・曜日・実施結果・メモ・申し送り・AI現在地・最新取得を引き継ぐ。案件キー確認不能のAI案件は、前週に同名AI案件が一意に存在し、過去の別キー衝突がなければ状態を引き継ぐが、キー自体は空欄のまま保存する。前週キー重複・同名重複・過去キー衝突・根拠なしの場合は別案件の状態を流用せず未着手とする。持越し・次週候補は持越し元IDで一意に特定し、保存済み状態を引き継ぐ
 - 変更：`src/Board.js`、`src/Import.js`、`src/weekly.html`、`tools/build_manual.js`、`src/view_manual.html`、関連テスト、`docs/DB_SCHEMA.md`、`docs/implementation/追加改修指示書_AI案件巡回の継続性・不一致判定_v1.0.md`、`docs/HANDOFF_FORMAT.md`、`docs/prompts/project_weekly_analysis.md`
 - 改行依存修正：`brief_json.test.js`・`prompts.test.js`・`tools/build_manual.js` のコードブロック検出を LF/CRLF 両対応に修正。現行仕様とずれていた `prompts.test.js` の期待値も、案件キー確認不能を案に残す仕様・現在の予約文に合わせた
 - テスト：`tests/*.test.js` 全件合格、`node tools/build_manual.js` 合格、`node tests/manual.test.js` 11件合格、`git diff --check` 合格。状態保持・同一週再読込・翌週引継ぎ・全状態値・案件キー不一致の部分継続を含む
