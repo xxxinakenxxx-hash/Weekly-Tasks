@@ -168,6 +168,7 @@
       $('wk-import').open = false;
       render();
       fillCaseRoutes();
+      fillCaseStates();
     }
     // 追加改修④ 継続処理：案件キーのある候補に、前の週の同じ案件の指示ルートを入れる（保存は「確定して保存」）。
     // 特定できない（前の週に無い・食い違う）場合は入れない（未設定のまま）
@@ -185,6 +186,28 @@
           } else if (r.ambiguous) {
             c.routeNote = '前の週に同じ案件キーで食い違う指示ルートがあるため引き継がない';
           }
+        });
+        render();
+      });
+    }
+
+    // 非確定の候補にだけ、サーバー検証済みの前週状態を反映（保存時も再照合する）。
+    function fillCaseStates() {
+      var candidates = state.candidates.filter(function (c) { return c.kind === 'AI案件'; });
+      if (!candidates.length) return;
+      var snapshot = candidates.map(function (c) {
+        return { key: c.key, title: c.title, kind: c.kind, caseKey: c.caseKey, exception: c.exception,
+          aiPosition: c.aiPosition, status: c.status, day: c.day, result: c.result, memo: c.memo, handover: c.handover };
+      });
+      App.callServer('previewCaseStates', [state.week, snapshot], function (res) {
+        if (!res || res.targetWeek !== state.week) return;
+        snapshot.forEach(function (s, i) {
+          var c = state.candidates.filter(function (x) { return x.key === s.key; })[0];
+          var r = (res.states || [])[i];
+          if (!c || !r || !r.found || c.title !== s.title || c.caseKey !== s.caseKey) return;
+          ['status', 'day', 'result', 'memo', 'handover', 'aiPosition'].forEach(function (k) {
+            if (Object.prototype.hasOwnProperty.call(r, k) && String(c[k] || '') === String(s[k] || '')) c[k] = r[k];
+          });
         });
         render();
       });
