@@ -1,20 +1,28 @@
 # TASK_CURRENT
 
 ## 2026-11-11 週次JSON全件停止の是正・2026-11-09週復旧（反映済み・確定保存待ち）
-- 状態：ローカル修正・マニュアル再生成・全自動テスト・GitHub push・GAS /dev反映・Drive同一ID上書き・/dev候補表示確認まで完了。予約変更、公開版deployment更新、Sheetsの「確定して保存」は未実施
+- 状態：ローカル修正・マニュアル再生成・全自動テスト・GitHub push・GAS /dev反映・Drive同一ID上書き・/dev候補表示確認まで完了。今回の再検証でも全21テスト合格、GASは現行HEADと一致し `Script is already up to date`。予約変更、公開版deployment更新、Sheetsの「確定して保存」は未実施
 - 案件キー不一致：AI案件の形式不一致キーだけを推測補正せず空欄にし、当該行へ「要確認：案件キー確認不能」を付与。正常10案件・通常タスクは同一JSONから継続し、問題案件も案に残す。全体構造・対象週・通常タスク不正・非AI案件のキー不正・保存時検証は停止
 - 状態引継ぎ：案件キーで前週の同一案件を一意に特定できる場合、状態・曜日・実施結果・メモ・申し送り・AI現在地・最新取得を引き継ぐ。前週キーが重複するなど特定不能、または案件キーがない場合は別案件の状態を流用せず新規初期値（未着手）とする。持越し・次週候補は持越し元IDで一意に特定し、保存済み状態を引き継ぐ
 - 変更：`src/Board.js`、`src/Import.js`、`src/weekly.html`、`tools/build_manual.js`、`src/view_manual.html`、関連テスト、`docs/DB_SCHEMA.md`、`docs/implementation/追加改修指示書_AI案件巡回の継続性・不一致判定_v1.0.md`、`docs/HANDOFF_FORMAT.md`、`docs/prompts/project_weekly_analysis.md`
 - 改行依存修正：`brief_json.test.js`・`prompts.test.js`・`tools/build_manual.js` のコードブロック検出を LF/CRLF 両対応に修正。現行仕様とずれていた `prompts.test.js` の期待値も、案件キー確認不能を案に残す仕様・現在の予約文に合わせた
 - テスト：`tests/*.test.js` 全件合格、`node tools/build_manual.js` 合格、`node tests/manual.test.js` 11件合格、`git diff --check` 合格。状態保持・同一週再読込・翌週引継ぎ・全状態値・案件キー不一致の部分継続を含む
 - 既存3件の失敗：`brief_json.test.js`・`prompts.test.js`・`manual.test.js` は改行形式依存と現行仕様文との期待値ずれが原因で、今回のGAS受入ロジックの不具合ではなかった。ローカルテスト修正後は全件合格
-- 反映前提：`tools/push_gas_checked.js` は dry-run ではなく、clean確認後に `clasp push --force` を実行する唯一の入口。今回の禁止範囲により未実行。反映時は、コミット済みclean確認→マニュアル再生成・manual.test→差分なし→`.clasp.json` の scriptId/rootDir確認→GAS `/dev` push→deployment不変確認の順
+- 反映前提：`tools/push_gas_checked.js` は dry-run ではなく、clean確認後に `clasp push --force` を実行する唯一の入口。現行HEADで再実行し、マニュアル11件合格、GAS側 `Script is already up to date`、公開deployment一覧不変を確認
 - 本番復旧順序：①GitHub反映承認後に対象差分をpush ②GAS反映承認後に上記入口で `/dev` へ反映・ソース照合 ③ユーザーが予約「【週間タスク】週間分析JSON生成」の本文を最新版付録Bへ差替え、再開・プロジェクト・時刻を確認 ④予約で2026-11-09週の `週間分析.json` を同名同ID上書き再生成 ⑤GAS取込後、週間画面で正常10案件・通常タスク・要確認2案件を確認 ⑥既存状態・履歴・持越しが維持され、確定前にシートが書かれていないことを確認 ⑦ユーザーが画面で確定保存 ⑧再読込して同じ週・同じ候補・同じ状態を確認
 - 本番権限・確認：GitHub write権限、対象GAS scriptの編集/`clasp`認証、予約編集権限、Drive同名JSONの同一ファイル更新権限、対象スプレッドシートの読取・確定保存権限が必要。実施後は公開版deployment不変、予約の無関係設定不変、10案件継続、2案件のキー空欄＋要確認、通常タスク継続、確定前Sheets不変、確定後の再読込一致を確認
 - 実施結果（2026-11-11）：コミット `4a4df47968489fec4f94932c183ba869c40c7f44` をブランチ `claude/gallant-dijkstra-m5gen1` へpush。`.clasp.json` の scriptId `1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS` と `rootDir=src` を確認し、`node tools/push_gas_checked.js` で23ファイルをGASへ反映。deploymentは `@HEAD` と `@1` の2件で不変
 - 実施結果（Drive）：既存 `週間分析.json` ID `1ajsoKMuoqI-cFkFm7JeN5sP948_V6f5j` を同一IDで上書き。読戻しで `対象週=2026-11-09`、タスク案17件（AI案件12・通常タスク5）、空欄キー3件（新販売事例・Aegis-Mesh・Billing-Reconciliation-System）、非空キー形式不正0件を確認。予約は変更していない
 - 実施結果（/dev）：週間画面を開き「再読込」を実行。要点・コーション5件・候補17件（AI案件12・通常5）が表示され、正常案件／通常タスクが継続し、キー確認不能案件は空欄・要確認、不一致案件は不一致として表示された。確定保存は押していないため、2026-11-09週のSheets行は0件、前週の状態・履歴は不変
 - 実画面後の残作業：ユーザーが候補内容を確認し、必要な確認チェック（不一致）を入れたうえで「確定して保存」を押す。その後、同一週再読込・翌週引継ぎ・履歴・既存タスク保全をSheetsで確認する
+
+## 2026-11-11 最終受入前再検証
+- 読了：`tasks/CHAT_CURRENT.md`、`tasks/TASK_CURRENT.md`、`ルールブック.md`、`CLAUDE.md`、IS-04・IS-05・IS-06 v1.1、案件キー・継続性・不一致判定の実装指示書
+- 検証：現行コミット `4a4df47` の17ファイル変更を確認。全21テストファイル、マニュアル生成、manual.test 11件、git diff --check が合格
+- 状態保持：同一案件キーの前週状態保持、同一週再読込、翌週引継ぎ、キー重複・キー空欄・特定不能時の流用禁止、状態6値、履歴保持を回帰テストで確認
+- GAS：`node tools/push_gas_checked.js` を現行HEADで実行。`Script is already up to date`、マニュアル11件合格、公開deployment不変。予約・公開版・Sheetsは変更なし
+- 未確認：ユーザーによる不一致チェック後の「確定して保存」、保存後の同一週再読込、翌週の実データ引継ぎ、次回定刻予約実行
+- 判定：未完了（ユーザー確定保存と、その後の実機再読込・翌週引継ぎ確認が残る）
 
 ## 2026-10-26 追加改修「共通規約マスタ管理」実施・完了
 - 状態：完了（コード・GASの変更なし。IS-06は継続中のまま）。standards（Private）を新設し、2文書の正本を初版登録（コミット e6dd81e39745eb22bdafee84d083804819ae07ed）。5リポジトリの写しを各 main へ配布し、全件一致照合済み
