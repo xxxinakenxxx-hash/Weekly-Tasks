@@ -125,7 +125,7 @@ t('指示文：「\\」を「\\\\」と重ねて書く決まりと例（例は�
 });
 t('指示文：保存前の確認（JSONとして読める・必須項目・案件キーの形・すべての案件・取得結果を変えない）', () => {
   ['JSONとして読み込める', '「日付」「今日の一言」「今日の流れ」「今日優先すること」「気にかけておきたいこと」「もう片づいていること」「未完了・持越し」がそろっている',
-    '「案件キー」は、空か、上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）', 'AI案件_日次現在地.md のすべての案件（件数は決まっていない）が入っていて、各件の「案件キー」が AI案件_日次現在地.md のその案件の「TASK_CURRENT.md：」の値と一字も違わない（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）',
+    '「案件キー」は、空か、TASK_CURRENT.md で終わり説明が付いていない値（上のどちらかの形、または既存の案件キーそのまま）', 'AI案件_日次現在地.md のすべての案件（件数は決まっていない）が入っていて、各件の「案件キー」が AI案件_日次現在地.md のその案件の「TASK_CURRENT.md：」の値と一字も違わない（「今回読んだTASK_CURRENT.md：」の値を案件キーにしない）',
     '「取得結果」は AI案件_日次現在地.md の値のまま', '取得失敗の案件を「確認済み」に変えない'].forEach(x => assert.ok(prompt.includes(x), x));
   assert.ok(prompt.includes('案件名（タスク名）で対応付けない'));
   assert.ok(!prompt.includes('固定値'));
@@ -172,6 +172,20 @@ t('自動取込：説明文が混入した案件キー（10/14 の5件目）は�
   assert.match(rec.reason, /案件キーは TASK_CURRENT\.md の場所です/);
   assert.strictEqual(JSON.stringify(g.__sheets['タスク'].data), h);
   assert.strictEqual(g.getMorningBrief(D).brief, null);
+});
+
+t('指示文：/blob/HEAD/ を含まない既存の案件キーは直さず空にせず、保存を止めて質問しない（2026-11-25 朝ブリーフ.json 未保存の再発防止）', () => {
+  assert.ok(prompt.includes('上の形と違っても、TASK_CURRENT.md で終わり説明が付いていない既存の案件キー（例：/blob/HEAD/ を含まない従来の GitHub の場所）は、AI案件_日次現在地.md の値のまま直さずに書き、そのまま保存する。形を直したり、空にしたり、保存を止めて質問したりしない'));
+  assert.ok(!prompt.includes('「案件キー」は、空か、上のどちらかの形（TASK_CURRENT.md で終わり、説明が付いていない）'));
+});
+t('保存処理：/blob/HEAD/ を含まない従来の案件キーでも朝ブリーフを保存でき、同じキーの行へ同期する', () => {
+  const g = load(); g.setupSheets();
+  const OLD = 'https://github.com/xxxinakenxxx-hash/New-Sales-Cases/tasks/TASK_CURRENT.md';
+  const W = '2026-11-23';
+  const id = g.createTask({ targetWeek: W, title: '新販売事例', kind: 'AI案件', caseKey: OLD }).taskId;
+  const res = g.saveMorningBrief({ date: '2026-11-25', oneLine: 'x', flow: [], priorities: [], concerns: [], done: [], carryover: [],
+    aiPositions: [{ taskId: id, caseKey: OLD, title: '新販売事例', result: '確認済み', position: 'P1実装開始前', at: '2026-11-25 06:49', note: '' }] });
+  assert.strictEqual(res.aiSync.synced.length, 1);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
