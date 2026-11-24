@@ -208,7 +208,7 @@ function fallbackAnalysis_(week, rec, reason, file) {
       backupAnalysisFile_(file);
       DriveApp.getFolderById(IMPORT.FOLDER_ID).getFilesByName(IMPORT.ANALYSIS_FILE).next().setContent(text);
     } else {
-      DriveApp.getFolderById(IMPORT.FOLDER_ID).createFile(IMPORT.ANALYSIS_FILE, text, 'application/json');
+      createInFolder_(IMPORT.ANALYSIS_FILE, text);
     }
   } catch (e) {
     return fail(reason + '。予備の案を保存できません：' + e.message);
@@ -230,10 +230,18 @@ function fallbackAnalysis_(week, rec, reason, file) {
 function backupAnalysisFile_(file) {
   var m = String(file.text || '').match(/"対象週"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
   var name = FALLBACK.BACKUP_PREFIX + (m ? m[1] : String(file.updated).replace(/[^0-9]/g, '')) + '.json';
-  var folder = DriveApp.getFolderById(IMPORT.FOLDER_ID);
-  if (folder.getFilesByName(name).hasNext()) return name;
-  folder.createFile(name, String(file.text || ''), 'application/json');
+  if (DriveApp.getFolderById(IMPORT.FOLDER_ID).getFilesByName(name).hasNext()) return name;
+  createInFolder_(name, String(file.text || ''));
   return name;
+}
+
+// 「週間タスクボード」直下に新しいファイルを作る。DriveApp.createFile で作ってからフォルダへ移す
+// （GAS は DriveApp.createFile の記述から Drive の書き込み権限を自動で求める。フォルダの createFile だけでは読み取り権限しか求めず、
+//   2026-11-24 の実機で「DriveApp.Folder.createFile を呼び出す権限がありません」となった。appsscript.json に権限の一覧は書かない（2026-10-26 決定））
+function createInFolder_(name, text) {
+  var f = DriveApp.createFile(name, text, 'application/json');
+  f.moveTo(DriveApp.getFolderById(IMPORT.FOLDER_ID));
+  return f;
 }
 
 // AI案件.md の項目（「- 名前：値」と「  - 名前：値」）

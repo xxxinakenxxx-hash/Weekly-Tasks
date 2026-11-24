@@ -47,6 +47,7 @@ function load(opts = {}) {
   const drive = { files: [], folderIds: [], error: null, writeError: null, writeDrop: false, writes: [] };
   const fileApi = f => ({
     getId: () => f.id, getName: () => f.name, getLastUpdated: () => f.updated, getBlob: () => ({ getDataAsString: () => f.text }),
+    moveTo: folder => { f.folderId = folder.__id; return fileApi(f); },
     setContent: text => {
       if (drive.writeError) throw new Error(drive.writeError);
       drive.writes.push(['set', f.name]);
@@ -78,10 +79,18 @@ function load(opts = {}) {
       }
     },
     DriveApp: {
+      // ルートに作る（folderId: 'root'）。moveTo でフォルダへ移す
+      createFile: (name, text, mime) => {
+        if (drive.writeError) throw new Error(drive.writeError);
+        const f = { id: 'NEW-' + name + '-' + drive.files.length, name, text: drive.writeDrop ? '' : String(text), updated: new ctx.Date(), folderId: 'root', mime };
+        drive.files.push(f); drive.writes.push(['create', name]);
+        return fileApi(f);
+      },
       getFolderById: id => {
         if (drive.error) throw new Error(drive.error);
         drive.folderIds.push(id);
         return {
+          __id: id,
           getFilesByName: name => {
             const list = drive.files.filter(f => f.folderId === undefined || f.folderId === id).filter(f => f.name === name);
             let i = 0;

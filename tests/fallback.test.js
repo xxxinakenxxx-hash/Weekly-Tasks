@@ -318,5 +318,13 @@ t('予備の案から確定して保存できる（案件キーのある案は�
   assert.strictEqual(g.getWeeklyDraft(WEEK).status.result, '確定済み');
 });
 
+t('権限：新しいファイルは DriveApp.createFile で作る（GAS が Drive の書き込み権限を自動で求めるため）。appsscript.json に権限の一覧は書かない', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src/Import.js'), 'utf8');
+  assert.ok(src.includes("DriveApp.createFile(name, text, 'application/json')"));
+  assert.ok(!/getFolderById\([^)]*\)\.createFile\(/.test(src));
+  assert.ok(!('oauthScopes' in JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src/appsscript.json'), 'utf8'))));
+});
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
