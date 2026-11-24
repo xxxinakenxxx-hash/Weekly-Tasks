@@ -318,12 +318,12 @@ t('予備の案から確定して保存できる（案件キーのある案は�
   assert.strictEqual(g.getWeeklyDraft(WEEK).status.result, '確定済み');
 });
 
-t('権限：新しいファイルは DriveApp.createFile で作る（GAS が Drive の書き込み権限を自動で求めるため）。appsscript.json に権限の一覧は書かない', () => {
+t('権限：新しいファイルは DriveApp.createFile で作る。appsscript.json に Drive の読み書き権限を明記する（2026-11-24 ユーザー承認。自動判定は読み取りのままだった）', () => {
   const fs = require('fs'), path = require('path');
   const src = fs.readFileSync(path.join(__dirname, '..', 'src/Import.js'), 'utf8');
   assert.ok(src.includes("DriveApp.createFile(name, text, 'application/json')"));
   assert.ok(!/getFolderById\([^)]*\)\.createFile\(/.test(src));
-  assert.ok(!('oauthScopes' in JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src/appsscript.json'), 'utf8'))));
+  assert.ok(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'src/appsscript.json'), 'utf8')).oauthScopes.includes('https://www.googleapis.com/auth/drive'));
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);

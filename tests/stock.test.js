@@ -16,10 +16,11 @@ const todo = () => ({ lists: [{ id: 'L1', title: 'My Tasks', tasks: [
 const stockSheet = g => g.__sheets['ストック'];
 const body = g => (stockSheet(g) ? stockSheet(g).data.slice(1) : []);
 
-t('Google Tasks連携：appsscript.json は enabledAdvancedServices に Tasks（v1）だけを追加。oauthScopes は追加しない', () => {
+t('Google Tasks連携：appsscript.json は enabledAdvancedServices に Tasks（v1）だけ。oauthScopes は既存の権限＋Drive の読み書き（2026-11-24 ユーザー承認で 2026-10-26 の「書かない」を変更）', () => {
   const m = JSON.parse(read('src/appsscript.json'));
   assert.deepStrictEqual(m.dependencies.enabledAdvancedServices, [{ userSymbol: 'Tasks', serviceId: 'tasks', version: 'v1' }]);
-  assert.ok(!('oauthScopes' in m));
+  assert.deepStrictEqual(m.oauthScopes, ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/script.scriptapp', 'https://www.googleapis.com/auth/tasks']);
   assert.deepStrictEqual([m.timeZone, m.runtimeVersion, m.webapp.executeAs, m.webapp.access], ['Asia/Tokyo', 'V8', 'USER_DEPLOYING', 'MYSELF']);
 });
 t('TODOタブ：画面は 週間タスク・朝ブリーフ・TODO の3つ。既存の2タブの定義は変わらない', () => {

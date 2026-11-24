@@ -236,8 +236,8 @@ function backupAnalysisFile_(file) {
 }
 
 // 「週間タスクボード」直下に新しいファイルを作る。DriveApp.createFile で作ってからフォルダへ移す
-// （GAS は DriveApp.createFile の記述から Drive の書き込み権限を自動で求める。フォルダの createFile だけでは読み取り権限しか求めず、
-//   2026-11-24 の実機で「DriveApp.Folder.createFile を呼び出す権限がありません」となった。appsscript.json に権限の一覧は書かない（2026-10-26 決定））
+// （2026-11-24 の実機で、自動で決まる権限が Drive の読み取りだけで「DriveApp.Folder.createFile を呼び出す権限がありません」となった。
+//   appsscript.json の oauthScopes に Drive の読み書き権限を明記した（同日ユーザー承認。既存の権限は維持））
 function createInFolder_(name, text) {
   var f = DriveApp.createFile(name, text, 'application/json');
   f.moveTo(DriveApp.getFolderById(IMPORT.FOLDER_ID));
