@@ -813,7 +813,11 @@
       var p = $('wk-auto');
       p.hidden = true;
       if (!rec || rec.result === '確定済み') return;
-      if (rec.result === '案あり') {
+      if (rec.result === '案あり' && rec.fallback) {
+        // 週間分析の予備作成（2026-11-24）：予約が今週分を作らなかったため、GAS が AI案件.md などから作った案
+        p.className = 'wk-stale';
+        p.textContent = '予約による週間分析が今週分を作らなかったため（' + rec.fallbackReason + '）、GAS が AI案件.md・タスクシート・ストックから予備の案を自動で作り、週間分析.json（' + rec.fileUpdated + ' 保存）へ保存して表示しています（タスク案 ' + rec.count + '件）。メール・予定の分析は含みません。内容を確認して「確定して保存」を押してください。';
+      } else if (rec.result === '案あり') {
         p.className = 'wk-note wk-excluded';
         p.textContent = 'Drive の 週間分析.json（' + rec.fileUpdated + ' 更新）を「案」として表示しています（タスク案 ' + rec.count + '件' + (rec.corrected ? '・文字の補正あり' : '') + '）。内容を確認して「確定して保存」を押してください。';
       } else {

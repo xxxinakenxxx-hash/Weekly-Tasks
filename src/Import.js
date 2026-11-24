@@ -152,25 +152,167 @@ function checkAnalysis_() {
   }
   var fail = function (reason) { return { status: writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, { result: IMPORT_RESULT.FAIL, reason: reason })) }; };
   var file = readDriveJson_(IMPORT.ANALYSIS_FILE);
-  if (file.error) return fail(file.error);
+  // Drive そのものを読めない場合は、予備の案も保存できないため作らない
+  if (file.error && file.error.indexOf('Drive を読めません') === 0) return fail(file.error);
+  // 今週分として使えない場合（ファイルなし・解析不能・種別違い・検証不合格・対象週違い）は、予備の案を作れるか確かめる（2026-11-24）
+  var unusable = function (reason) { return fallbackAnalysis_(week, rec, reason, file.error ? null : file); };
+  if (file.error) return unusable(file.error);
   Object.assign(rec, { fileId: file.id, fileUpdated: file.updated, checkKey: file.id + '|' + file.updated + '|' + week });
   var parsed = parseImportJson_(file.text);
-  if (parsed.error) return fail(parsed.error);
+  if (parsed.error) return unusable(parsed.error);
   rec.corrected = parsed.corrected;
   var kind = importKind_(parsed.data);
-  if (kind.error) return fail(kind.error);
-  if (kind.kind !== 'analysis') return fail(IMPORT.ANALYSIS_FILE + ' の中身が朝ブリーフのJSONです（取り込みません）');
+  if (kind.error) return unusable(kind.error);
+  if (kind.kind !== 'analysis') return unusable(IMPORT.ANALYSIS_FILE + ' の中身が朝ブリーフのJSONです（取り込みません）');
   // 案件キーの形式不一致は、その案件だけを要確認として残す。
   // キーの推測補正はせず、正常な通常タスク・AI案件の案は継続する。
   var normalized = normalizeHandoffCaseKeys_(parsed.data);
   var errors = handoffErrors_(normalized);
-  if (errors.length) return fail('検証不合格：' + errors.join(' '));
-  if (normalized['対象週'] !== week) return fail('週間分析.json の対象週（' + normalized['対象週'] + '）が今週（' + week + '）ではありません');
+  if (errors.length) return unusable('検証不合格：' + errors.join(' '));
+  if (normalized['対象週'] !== week) return unusable('週間分析.json の対象週（' + normalized['対象週'] + '）が今週（' + week + '）ではありません');
   var count = normalized['タスク案'].length;
   // 同じファイルを確かめ直しただけなら記録を書き換えない（確認日時だけが増えないように）
   var status = prev && prev.checkKey === rec.checkKey && prev.result === IMPORT_RESULT.DRAFT ? prev
     : writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, { result: IMPORT_RESULT.DRAFT, count: count }));
   return { status: status, data: normalized };
+}
+
+// ---- 週間分析の予備作成（2026-11-24 根本修復） ----
+// 週間分析.json は予約「【週間タスク】週間分析JSON生成」（ChatGPT、月曜7:00）が作る。PCの停止・予約の未実行・前段の遅れで
+// 今週分が作られなかった週（2026-11-23週など）は、週間画面に案が出なかった。予約の実行はGASから見えないため、
+// 今週の月曜 12:00 を過ぎても今週分が無い場合だけ、GAS が AI案件.md（前段の週次AI巡回の結果）・タスクシート・ストックから
+// 機械的に予備の案を作り、同じ 週間分析.json へ保存して読み戻しで確かめる。予約が後で今週分を作れば、そちらが優先される
+// （今週分のファイルは上書きしない）。上書き前の中身は「週間分析_退避_（対象週）.json」に残す。
+var FALLBACK = {
+  VAULT_FOLDER_ID: '1vAHdhUFYsQ86bnC_OPaWeczZU-_NhHnV',  // Obsidian Vault「週間タスク」（README・docs/OBSIDIAN_FORMAT.md）
+  AI_FILE: 'AI案件.md',
+  START: ' 12:00:00',          // 今週の月曜のこの時刻（日本時間）以降に作る。予約（7:00）の遅れ（実測 9:27）を待つ
+  MARK: '【自動作成（予備）】',
+  BACKUP_PREFIX: '週間分析_退避_'
+};
+// 案件キーの形（巡回指示文の決まり。tools/case_select.js の isCaseKey と同じ）
+var FALLBACK_KEY_RES = [/^C:\\Users\\inamori240\\Documents\\[^\\]+\\tasks\\TASK_CURRENT\.md$/, /^https:\/\/github\.com\/[^\/\s]+\/[^\/\s]+\/blob\/HEAD\/tasks\/TASK_CURRENT\.md$/];
+
+function fallbackAnalysis_(week, rec, reason, file) {
+  var fail = function (r) { return { status: writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, { result: IMPORT_RESULT.FAIL, reason: r })) }; };
+  if (nowText_() < week + FALLBACK.START) return fail(reason + '（予約による今週分の作成を待っています。今週の月曜 12:00 を過ぎても今週分が無い場合は、AI案件.md から予備の案を自動で作ります）');
+  var built = buildFallbackAnalysis_(week, reason);
+  if (built.error) return fail(reason + '。予備の案も作れません：' + built.error);
+  var text = JSON.stringify(built.data, null, 2);
+  try {
+    if (file) {
+      backupAnalysisFile_(file);
+      DriveApp.getFolderById(IMPORT.FOLDER_ID).getFilesByName(IMPORT.ANALYSIS_FILE).next().setContent(text);
+    } else {
+      DriveApp.getFolderById(IMPORT.FOLDER_ID).createFile(IMPORT.ANALYSIS_FILE, text, 'application/json');
+    }
+  } catch (e) {
+    return fail(reason + '。予備の案を保存できません：' + e.message);
+  }
+  // 保存した実ファイルを読み戻し、中身・構文・対象週を確かめる（書いたつもりで終わらせない）
+  var back = readDriveJson_(IMPORT.ANALYSIS_FILE);
+  if (back.error) return fail(reason + '。予備の案を保存しましたが読み戻せません：' + back.error);
+  var parsed = parseImportJson_(back.text);
+  var data = parsed.error ? null : normalizeHandoffCaseKeys_(parsed.data);
+  if (back.text !== text || !data || handoffErrors_(data).length || data['対象週'] !== week) return fail(reason + '。予備の案を保存しましたが、読み戻した中身が一致しません');
+  var status = writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, {
+    fileId: back.id, fileUpdated: back.updated, checkKey: back.id + '|' + back.updated + '|' + week, corrected: false,
+    result: IMPORT_RESULT.DRAFT, count: data['タスク案'].length, fallback: true, fallbackReason: reason
+  }));
+  return { status: status, data: data };
+}
+
+// 上書き前の 週間分析.json を同じフォルダへ退避する（同じ名前の退避が既にあれば作らない）。退避できなければ上書きしない
+function backupAnalysisFile_(file) {
+  var m = String(file.text || '').match(/"対象週"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
+  var name = FALLBACK.BACKUP_PREFIX + (m ? m[1] : String(file.updated).replace(/[^0-9]/g, '')) + '.json';
+  var folder = DriveApp.getFolderById(IMPORT.FOLDER_ID);
+  if (folder.getFilesByName(name).hasNext()) return name;
+  folder.createFile(name, String(file.text || ''), 'application/json');
+  return name;
+}
+
+// AI案件.md の項目（「- 名前：値」と「  - 名前：値」）
+function fallbackFields_(block) {
+  var out = {};
+  String(block).split(/\r?\n/).forEach(function (line) {
+    var m = line.match(/^\s*-\s*([^：]+)：(.*)$/);
+    if (m && !out.hasOwnProperty(m[1].trim())) out[m[1].trim()] = m[2].trim();
+  });
+  return out;
+}
+
+/** 予備の案（docs/HANDOFF_FORMAT.md の形）。AI案件.md が今週分でなければ作らない（前段の遅れ・未実行） */
+function buildFallbackAnalysis_(week, reason) {
+  var md;
+  try {
+    var it = DriveApp.getFolderById(FALLBACK.VAULT_FOLDER_ID).getFilesByName(FALLBACK.AI_FILE);
+    var files = [];
+    while (it.hasNext()) files.push(it.next());
+    if (!files.length) return { error: FALLBACK.AI_FILE + ' がありません' };
+    if (files.length > 1) return { error: FALLBACK.AI_FILE + ' が ' + files.length + ' 件あります' };
+    md = files[0].getBlob().getDataAsString('UTF-8');
+  } catch (e) {
+    return { error: FALLBACK.AI_FILE + ' を読めません：' + e.message };
+  }
+  var head = md.match(/対象週：(\d{4}-\d{2}-\d{2})/);
+  if (!head) return { error: FALLBACK.AI_FILE + ' に対象週がありません' };
+  if (head[1] !== week) return { error: '前段の週次AI巡回の結果（' + FALLBACK.AI_FILE + '）が今週分ではありません（対象週 ' + head[1] + '）。今週分ができたら次の確認で作ります' };
+  var checkedOn = (md.match(/確認日：(\d{4}-\d{2}-\d{2})/) || [])[1] || '';
+  var all = getTasks();
+  var weekTitles = {};
+  all.forEach(function (t) { if (String(t.targetWeek) === week) weekTitles[String(t.title)] = true; });
+  var parts = md.split(/^## \d+\.\s*/m).slice(1);
+  var tasks = [], cautions = [], counts = { mismatch: 0, check: 0, keyless: 0 };
+  parts.forEach(function (sec) {
+    var nl = sec.indexOf('\n');
+    var name = (nl < 0 ? sec : sec.slice(0, nl)).trim();
+    if (!name) return;
+    var f = fallbackFields_(nl < 0 ? '' : sec.slice(nl + 1));
+    var notes = [];
+    var integrity = f['情報源整合'] || '';
+    if (integrity.indexOf('不一致') === 0) { notes.push('不一致：' + (f['不一致の内容'] || f['要確認'] || '情報源の食い違い')); counts.mismatch++; }
+    else if (integrity.indexOf('要確認') === 0) { notes.push('要確認：' + (f['要確認'] || '巡回結果が要確認')); counts.check++; }
+    var raw = f['TASK_CURRENT.md'] || '';
+    var key = FALLBACK_KEY_RES.some(function (re) { return re.test(raw); }) ? raw : '';
+    if (!key) {
+      notes.push('要確認：案件キー確認不能：' + (raw && raw !== 'なし' ? 'AI案件.md の場所が指定の形と違います（値は補正していません）' : 'AI案件.md の「TASK_CURRENT.md：」が「なし」です'));
+      counts.keyless++;
+    }
+    var position = [['現在工程', '現在工程'], ['工程状態', '工程状態'], ['次にやる具体作業', '次'], ['現在の手番', '手番']]
+      .filter(function (p) { return f[p[0]]; }).map(function (p) { return p[1] + '：' + f[p[0]]; }).join('／');
+    // 前回とのつながり（付録Bと同じ決まり）：台帳の最新記録日が前の週の記録より古い・日付なしなら、現在地は採らない（保存時に前の週の値を引き継ぐ）
+    var prev = key ? latestCaseRow_(all, week, key).row : null;
+    var prevAt = prev ? [prev.aiConfirmedAt, prev.aiLatestAt].map(function (x) { return String(x || ''); }).sort().pop() : '';
+    var ledger = ((f['台帳の最新記録日'] || '').match(/\d{4}-\d{2}-\d{2}/) || [])[0] || '';
+    if (prevAt && (!ledger || ledger < prevAt.slice(0, 10))) {
+      position = '';
+      notes.push('要確認：週次巡回の記録（台帳の最新記録日 ' + (ledger || 'なし') + '）が前回の記録（' + prevAt + '）より古いか日付を確認できないため、現在地は前の週の値を引き継ぎます');
+    }
+    var t = { 'タスク名': name, '種別': 'AI案件', '曜日': '', '優先度': tasks.length + 1, '重点': false, '例外情報': notes.join('／'), 'AI案件現在地': position };
+    if (key) t['案件キー'] = key;
+    tasks.push(t);
+  });
+  if (!tasks.length) return { error: FALLBACK.AI_FILE + ' に案件がありません' };
+  var aiCount = tasks.length, stockCount = 0;
+  var stock = findStockSheet_();
+  if (stock) stockRows_(stock).forEach(function (r) {
+    if (r.status !== '未採用' || (r.hopeWeek && r.hopeWeek !== week) || weekTitles[r.content]) return;
+    tasks.push({ 'タスク名': r.content, '種別': '通常タスク', '曜日': '', '優先度': tasks.length + 1, '重点': false, '例外情報': '' });
+    stockCount++;
+  });
+  var open = all.filter(function (t) {
+    return t.kind === '通常タスク' && String(t.targetWeek) < week && ['未着手', '進行中', '持越し', '次週候補'].indexOf(String(t.status)) >= 0;
+  }).length;
+  cautions.push('要確認：' + reason + '。予約による週間分析（ChatGPT）が今週分を作らなかったため、GASが自動で作った予備の案です');
+  cautions.push('要確認：予備の案は ' + FALLBACK.AI_FILE + '（確認日 ' + (checkedOn || '不明') + '）・タスクシート・ストックだけから作っています。メール・予定・通常業務の分析は含みません');
+  if (open) cautions.push('要確認：前週以前の未完了の通常タスク ' + open + '行は案に含めていません（持越しの取り込みかタスクシートで確認してください）');
+  return { data: {
+    '対象週': week,
+    '見立て': FALLBACK.MARK + 'AI案件 ' + aiCount + '件（不一致 ' + counts.mismatch + '件・要確認 ' + counts.check + '件・案件キー確認不能 ' + counts.keyless + '件）とストックの未採用 ' + stockCount + '件から作った案です。今週の中心や負荷の見立ては含みません。',
+    'コーション': cautions,
+    'タスク案': tasks
+  } };
 }
 
 // 週間分析の案件キーを案件単位で扱う。値そのものは補正せず、形式不一致の案件だけ要確認にする。

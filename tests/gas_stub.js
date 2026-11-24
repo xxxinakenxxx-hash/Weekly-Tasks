@@ -43,7 +43,17 @@ function load(opts = {}) {
   };
   let uuid = 0;
   // JSON手渡しの自動化：Drive のファイル（{ id, name, text, updated }）・スクリプトのプロパティ・トリガー
-  const drive = { files: [], folderIds: [], error: null };
+  // 週間分析の予備作成（2026-11-24）：書き込み（setContent・createFile）。writeError で保存失敗、writeDrop で「書いたのに中身が変わらない」を再現する
+  const drive = { files: [], folderIds: [], error: null, writeError: null, writeDrop: false, writes: [] };
+  const fileApi = f => ({
+    getId: () => f.id, getName: () => f.name, getLastUpdated: () => f.updated, getBlob: () => ({ getDataAsString: () => f.text }),
+    setContent: text => {
+      if (drive.writeError) throw new Error(drive.writeError);
+      drive.writes.push(['set', f.name]);
+      if (!drive.writeDrop) { f.text = String(text); f.updated = new ctx.Date(); }
+      return fileApi(f);
+    }
+  });
   const props = {};
   const triggers = [];
   const ctx = {
@@ -75,7 +85,13 @@ function load(opts = {}) {
           getFilesByName: name => {
             const list = drive.files.filter(f => f.folderId === undefined || f.folderId === id).filter(f => f.name === name);
             let i = 0;
-            return { hasNext: () => i < list.length, next: () => { const f = list[i++]; return { getId: () => f.id, getLastUpdated: () => f.updated, getBlob: () => ({ getDataAsString: () => f.text }) }; } };
+            return { hasNext: () => i < list.length, next: () => { const f = list[i++]; return fileApi(f); } };
+          },
+          createFile: (name, text, mime) => {
+            if (drive.writeError) throw new Error(drive.writeError);
+            const f = { id: 'NEW-' + name + '-' + drive.files.length, name, text: drive.writeDrop ? '' : String(text), updated: new ctx.Date(), folderId: id, mime };
+            drive.files.push(f); drive.writes.push(['create', name]);
+            return fileApi(f);
           }
         };
       }
