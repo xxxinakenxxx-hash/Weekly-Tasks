@@ -18,7 +18,8 @@
 - GAS反映：node tools/push_gas_checked.js（scriptId 1PVnJColm5Rt3qGkSZnS0xT8mFWRAVZAMAPk3-enNalM0P_lA2zcRyZtS／rootDir src）。反映前のGAS側は 27374e0 と改行の違いを除き一致（GAS側だけの変更なし）。反映後のGAS側23ファイルはローカルと一致。deployment は @HEAD と @1（IS-00 共通基盤）で不変、version は1のまま
 - 実動作（2026-11-24 18:14、ユーザーが編集画面で実行）：実行ログ「result 案あり・fallback true・count 12・fallbackReason 対象週（2026-11-16）が今週（2026-11-23）ではありません」
 - Drive の読み戻し（Claude Code、18:15）：週間分析.json は同じID 1ajsoKMuoqI-cFkFm7JeN5sP948_V6f5j・更新 2026-11-24 18:14 JST・対象週 2026-11-23・JSONとして読める・検証エラー0・タスク案12件（AI案件12。案件キー確認不能3件はキー空欄＋要確認、不一致1件）。退避 週間分析_退避_2026-11-16.json（ID 1weG1_1wU5Pcx-ndmFcPYatVuL7XxQEcl）は元の11/16版と一字一致。同じ名前の 週間分析.json は1つだけ
-- 未確認：週間画面（/dev、11-23週）での案12件の表示（ユーザー確認待ち）。権限変更後の時間主導の自動実行（importBriefFromDrive・importAnalysisFromDrive）が「完了」で続くこと。ToDo取込（Tasks）が新しい権限でも動くこと。11月30日（月）以降の予約による週間分析と予備作成の実運用
+- 週間画面（/dev、11-23週。ユーザー確認 2026-11-24）：「予約による週間分析が今週分を作らなかったため（週間分析.json の対象週（2026-11-16）が今週（2026-11-23）ではありません）、GAS が … 予備の案を自動で作り、週間分析.json（2026-11-24 18:14:28 保存）へ保存して表示しています（タスク案 12件）」と表示された。確定保存は未実施
+- 未確認：権限変更後の時間主導の自動実行（importBriefFromDrive・importAnalysisFromDrive）が「完了」で続くこと。ToDo取込（Tasks）が新しい権限でも動くこと。11月30日（月）以降の予約による週間分析と予備作成の実運用
 - 残件（提案。未実施）：週次も日次と同じく、巡回の予約の後段で週間分析JSONを作る形にする（予約本文の差し替えはユーザー作業）
 
 ## 2026-11-11 週次JSON全件停止の是正・2026-11-09週復旧（反映済み・確定保存待ち）
