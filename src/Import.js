@@ -29,6 +29,8 @@ function importBriefFromDrive() {
 /** 時間トリガー：週間分析.json を確かめる（内容は保存しない。週間画面で「案」として表示する） */
 function importAnalysisFromDrive() {
   var status = checkAnalysis_().status;
+  // 実行ログ（GAS 編集画面の「実行数」）に結果と理由を残す。失敗しても実行は「完了」になるため、理由をここで見られるようにする（2026-11-24）
+  console.log('週間分析の確認：' + JSON.stringify(status));
   // 追加実装 週間入口拡充：既存の1時間おき取込の中で、カレンダーのToDoをストックへ合流する（新しいトリガーは作らない。失敗しても上の結果は変えない）
   syncTodoToStock_();
   return status;
