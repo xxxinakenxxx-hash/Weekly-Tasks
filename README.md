@@ -31,6 +31,7 @@ src/                    GASソース（clasp push の対象）
   index.html ほか       2画面枠・タブ移動・共通CSS/JS・エラー枠
   view_weekly.html / weekly.html   週間タスク画面（表示・編集・候補の採用/削除・1回確定・再読込）
   view_brief.html / brief.html     朝ブリーフ画面（読込・保存・日付切替・表示、今週のタスクの日次更新）
+  appsscript.json       GASの設定。権限（oauthScopes）＝spreadsheets・drive（読み書き）・drive.readonly・script.scriptapp・tasks を明記（2026-11-24 ユーザー承認。週間分析の予備作成で Drive へ保存するため）
 tests/                  ローカルテスト（node tests/store.test.js、is00test.test.js、board.test.js、brief.test.js、carry.test.js＝日次更新・持越し、exception.test.js＝例外・不一致、delete.test.js＝保存済みタスクの削除、multiday_ai.test.js＝複数曜日・日次AI現在地の同期）
 ```
 
