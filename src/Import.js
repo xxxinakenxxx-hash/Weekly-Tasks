@@ -152,8 +152,10 @@ function checkAnalysis_() {
   }
   var fail = function (reason) { return { status: writeImportStatus_(IMPORT.ANALYSIS_PROP, Object.assign(rec, { result: IMPORT_RESULT.FAIL, reason: reason })) }; };
   var file = readDriveJson_(IMPORT.ANALYSIS_FILE);
-  // Drive そのものを読めない場合は、予備の案も保存できないため作らない
-  if (file.error && file.error.indexOf('Drive を読めません') === 0) return fail(file.error);
+  // Drive そのものを読めない場合は、予備の案も保存できないため作らない。
+  // 同じ名前のファイルが複数ある場合も作らない（どれを上書きするか決められず、書くとさらに混乱するため。2026-11-24 ユーザー指摘）
+  if (file.unreadable) return fail(file.error);
+  if (file.duplicate) return fail(file.error + '。予備の案は作りません（Drive で同じ名前のファイルを1つにしてください）');
   // 今週分として使えない場合（ファイルなし・解析不能・種別違い・検証不合格・対象週違い）は、予備の案を作れるか確かめる（2026-11-24）
   var unusable = function (reason) { return fallbackAnalysis_(week, rec, reason, file.error ? null : file); };
   if (file.error) return unusable(file.error);
@@ -377,10 +379,10 @@ function readDriveJson_(name) {
     files = [];
     while (it.hasNext()) files.push(it.next());
   } catch (e) {
-    return { error: 'Drive を読めません：' + e.message };
+    return { error: 'Drive を読めません：' + e.message, unreadable: true };
   }
-  if (!files.length) return { error: 'ファイルがありません：' + name };
-  if (files.length > 1) return { error: '同じ名前のファイルが ' + files.length + ' 件あるため取り込みません：' + name };
+  if (!files.length) return { error: 'ファイルがありません：' + name, missing: true };
+  if (files.length > 1) return { error: '同じ名前のファイルが ' + files.length + ' 件あるため取り込みません：' + name, duplicate: true };
   var f = files[0];
   return {
     id: f.getId(),

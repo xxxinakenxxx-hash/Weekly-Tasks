@@ -239,6 +239,50 @@ t('確定済みの週：予備の案は作らず、Drive に書かない（ユ�
   assert.deepStrictEqual(g.__drive.writes, []);
 });
 
+t('同じ名前の 週間分析.json が複数：予備の案へ進まず、どのファイルも書き換えず、ファイルも増やさない', () => {
+  const g = setup('2026-11-24T13:00:00');
+  const a = put(g, FOLDER, '週間分析.json', analysis(PREV), '2026-11-16T09:27:06');
+  const b = put(g, FOLDER, '週間分析.json', analysis(PREV, 2), '2026-11-17T09:00:00');
+  put(g, VAULT, 'AI案件.md', aiMd(WEEK), '2026-11-23T10:16:58');
+  const before = g.__drive.files.map(f => f.id + '|' + f.text).join('\n');
+  [13, 14, 15].forEach(h => {
+    g.__setNow('2026-11-24T' + h + ':00:00');
+    g.importAnalysisFromDrive();
+    const r = g.getWeeklyDraft(WEEK);
+    assert.strictEqual(r.status.result, '取込失敗');
+    assert.match(r.status.reason, /同じ名前のファイルが 2 件あるため取り込みません：週間分析.json。予備の案は作りません/);
+    assert.ok(!r.status.fallback);
+    assert.strictEqual(r.draft, null);
+  });
+  assert.deepStrictEqual(g.__drive.writes, []);
+  assert.strictEqual(g.__drive.files.length, 3);
+  assert.strictEqual(file(g, '週間分析.json').length, 2);
+  assert.strictEqual(g.__drive.files.filter(f => /^週間分析_退避_/.test(f.name)).length, 0);
+  assert.strictEqual(g.__drive.files.map(f => f.id + '|' + f.text).join('\n'), before);
+  assert.ok(a.text && b.text);
+});
+
+t('重複ファイルを増やさない（1つだけのとき）：何度確かめても 週間分析.json は1つ、退避も1つのまま', () => {
+  const g = setup('2026-11-24T13:00:00');
+  put(g, FOLDER, '週間分析.json', analysis(PREV), '2026-11-16T09:27:06');
+  put(g, VAULT, 'AI案件.md', aiMd(WEEK), '2026-11-23T10:16:58');
+  for (let h = 13; h <= 20; h++) { g.__setNow('2026-11-24T' + h + ':00:00'); g.importAnalysisFromDrive(); g.getWeeklyDraft(WEEK); }
+  assert.strictEqual(file(g, '週間分析.json').length, 1);
+  assert.strictEqual(file(g, '週間分析_退避_2026-11-16.json').length, 1);
+  assert.strictEqual(g.__drive.files.filter(f => f.folderId === FOLDER).length, 2);
+});
+
+t('ファイルなしで保存に失敗しても、次の確認で作るのは1つだけ（重複を作らない）', () => {
+  const g = setup('2026-11-24T13:00:00');
+  put(g, VAULT, 'AI案件.md', aiMd(WEEK), '2026-11-23T10:16:58');
+  g.__drive.writeError = 'Internal error';
+  assert.strictEqual(g.getWeeklyDraft(WEEK).status.result, '取込失敗');
+  assert.strictEqual(file(g, '週間分析.json').length, 0);
+  g.__drive.writeError = null;
+  for (let h = 14; h <= 16; h++) { g.__setNow('2026-11-24T' + h + ':00:00'); g.getWeeklyDraft(WEEK); }
+  assert.strictEqual(file(g, '週間分析.json').length, 1);
+});
+
 t('Drive を読めない：予備の案も保存できないため作らない', () => {
   const g = setup('2026-11-24T13:00:00');
   g.__drive.error = 'Service unavailable';
