@@ -460,5 +460,11 @@ t('週間入口拡充 項目1：ほかの指示文（日次・週次巡回・朝
   assert.ok(m.indexOf('この指示文の運用は終了') > m.indexOf('付録A') && m.indexOf('この指示文の運用は終了') < m.indexOf('id="appendix-a"'));
 });
 
+t('途中で質問しない・止めない：付録B・付録C・付録E（後段）に、質問せず要確認と書いて必ず保存する決まりがある（2026-11-25）', () => {
+  const B = block(read('docs/prompts/project_weekly_analysis.md')), C = block(read('docs/prompts/project_morning_brief.md'));
+  assert.ok(B.includes('質問せずに、その内容をコーションに「要確認：内容」（読めないものは「取得失敗：内容」）と書いて、必ず週間分析.json へ保存して終える。保存しないまま終わらない。'));
+  assert.ok(C.includes('質問せずに、その内容を「気にかけておきたいこと」に「要確認：内容」（読めないものは「取得失敗：内容」）と書いて、必ず朝ブリーフ.json へ保存して終える。保存しないまま終わらない。'));
+  assert.strictEqual(daily.split('途中で質問しない・止めない（2026-11-25）').length - 1, 1);
+});
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
